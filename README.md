@@ -9,3 +9,5 @@ npm install
 # Test run:
 npm run dev
 
+# Install Axios dependencies
+npm i @tanstack/react-query axios

@@ -1,0 +1,17 @@
+:root {
+    /* From your sample */
+    --bg: rgb(255, 255, 255);
+    --text: rgb(0, 0, 0);
+    --border: rgb(222, 226, 230);
+    --accent: rgb(51, 154, 240);      /* headerBg */
+    --on-accent: rgb(255, 255, 255);  /* headerText */
+
+    /* Table specifics */
+    --header-bg: var(--accent);
+    --header-text: var(--on-accent);
+    --row-alt: rgba(0, 0, 0, 0);      /* transparent per your sample */
+    --row-hover: #f5f7ff;
+}
+
+/* Optional hover for nav buttons to feel like your sample */
+.nav-btn:hover { background: rgba(51, 154, 240, 0.08); }

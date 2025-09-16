@@ -1,0 +1,91 @@
+/* src/styles/table.css */
+
+/* Outer container */
+.table-wrap {
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 16px;
+    overflow: auto;
+    background: var(--bg, #ffffff);
+    box-shadow:
+            0 1px 2px rgba(0,0,0,0.04),
+            0 8px 24px rgba(0,0,0,0.05);
+}
+
+/* Base table */
+table.data {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+    line-height: 1.35;
+}
+
+/* Header cells */
+table.data thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--header-bg, #339af0);   /* matches your sample */
+    color: var(--header-text, #ffffff);
+    text-align: left;
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    white-space: nowrap;
+}
+
+/* Body cells */
+table.data td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f1f5f9; /* subtle divider */
+    max-width: 340px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text, #000000);
+    background: var(--bg, #ffffff);
+}
+
+/* Zebra + hover */
+table.data tbody tr:nth-child(even) {
+    background: var(--row-alt, rgba(0,0,0,0)); /* transparent per your sample */
+}
+
+table.data tbody tr:hover {
+    background: var(--row-hover, #f5f7ff);
+}
+
+/* Sticky first column — HEADER */
+table.data thead th.sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 3;                                 /* above body cells */
+    background: var(--header-bg, #339af0);      /* keep header color */
+    color: var(--header-text, #ffffff);
+    box-shadow: 1px 0 0 0 var(--border, #e5e7eb);
+}
+
+/* Sticky first column — BODY */
+table.data tbody td.sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: inherit;                        /* preserves zebra/hover */
+    box-shadow: 1px 0 0 0 var(--border, #e5e7eb);
+}
+
+/* Numeric + centered alignment helpers */
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.center { text-align: center; }
+
+/* Small JSON / code chip */
+.code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+    background: #f9fafb;
+    border-radius: 6px;
+    padding: 2px 4px;
+}

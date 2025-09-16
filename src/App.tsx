@@ -1,35 +1,24 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Routes, Route, Navigate } from "react-router-dom";
+import TopNav from "./components/topnav";
+import HomePage from "./pages/home";
+import PlayersPage from "./pages/players/players";
+import DefencePage from "./pages/players/defence";
+import TransfersPage from "./pages/players/transfers";
+import NotFound from "./pages/notfound";
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+export default function App() {
+    return (
+        <>
+            <TopNav />
+            <div style={{ height: 56 }} aria-hidden="true" />
+            <Routes>
+                <Route path="/" element={<Navigate to="/home" replace />} />
+                <Route path="/home" element={<HomePage />} />
+                <Route path="/players" element={<PlayersPage />} />
+                <Route path="/defence" element={<DefencePage />} />
+                <Route path="/transfers" element={<TransfersPage />} />
+                <Route path="*" element={<NotFound />} />
+            </Routes>
+        </>
+    );
 }
-
-export default App
