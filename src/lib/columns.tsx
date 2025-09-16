@@ -93,6 +93,8 @@ export const BASE_COLUMN_MAP: ColumnMap = {
     total_points: { label: "Total Points", align: "right" },
     event_points: { label: "Game Week Points", align: "right" },
 
+    clean_sheets: { label: "Clean Sheets", align: "right" },
+
     selected_by_percent: { label: "Selected", align: "right", format: (v) => formatPercent(v) },
 
     form: { label: "Form", align: "right", format: (v) => formatNumber(v, 2) },
