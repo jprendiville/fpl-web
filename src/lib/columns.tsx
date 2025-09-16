@@ -50,6 +50,33 @@ export function formatPrice(v: unknown, symbol = "€"): ReactNode {
     return formatCurrency(n / 10, symbol);
 }
 
+export function unionKeys(
+    rows: Array<Record<string, unknown>>,
+    overrides?: ColumnMap
+): string[] {
+    const set = new Set<string>();
+    (rows || []).forEach((row) => {
+        Object.keys(row || {}).forEach((k) => {
+            if (!configFor(k, overrides).hide) set.add(k);
+        });
+    });
+    return Array.from(set);
+}
+
+/** Build columns from a strict whitelist ("only these"), hiding everything else */
+export function buildColumnsOnly(
+    rows: Array<Record<string, unknown>>,
+    only: string[],
+    overrides?: ColumnMap,
+    opts?: { keepMissing?: boolean } // keep columns even if no row currently has the key
+): { columns: string[]; stickyKey: string | undefined } {
+    const all = unionKeys(rows, overrides);
+    const columns = (opts?.keepMissing ? only : only.filter((k) => all.includes(k)))
+        .filter((k) => !configFor(k, overrides).hide);
+
+    const stickyKey = columns.find((k) => !!configFor(k, overrides).sticky) ?? columns[0];
+    return { columns, stickyKey };
+}
 
 /* ---------------- base column map (edit freely) ---------------- */
 
@@ -64,10 +91,13 @@ export const BASE_COLUMN_MAP: ColumnMap = {
 
     now_cost: { label: "Price", align: "right", format: (v) => formatPrice(v, "£") },
     total_points: { label: "Total Points", align: "right" },
+    event_points: { label: "Game Week Points", align: "right" },
 
     selected_by_percent: { label: "Selected", align: "right", format: (v) => formatPercent(v) },
-    event_points: { label: "Game Week Points", align: "right" },
+
     form: { label: "Form", align: "right", format: (v) => formatNumber(v, 2) },
+    bonus:  { label: "Bonus", align: "right"},
+    ep_next:  { label: "Expected Points", align: "right"},
     value_form: { label: "Value Form", align: "right", format: (v) => formatNumber(v, 2) },
     vapm: { label: "VAPM", align: "right", format: (v) => formatNumber(v, 2) },
 

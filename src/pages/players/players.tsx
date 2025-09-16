@@ -1,10 +1,12 @@
+// src/pages/players/players.tsx
+import type React from "react";
 import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import {
     type ColumnMap,
-    buildColumns,
+    buildColumnsOnly,   // ← whitelist builder
     configFor,
     headerLabel,
     autoAlign,
@@ -17,17 +19,24 @@ type DRFPage<T> = { count: number; next: string | null; previous: string | null;
 
 const ENDPOINT = "/v1/players/";
 
-/** Page-specific overrides:
- *  Change labels here to whatever you want for THIS page.
- *  Example: show web_name as "Player"
- */
-const PLAYERS_PAGE_OVERRIDES: ColumnMap = {
-    selected_by_percent: {hide: true},
-    value_form:  {hide: true},
-};
+// Show ONLY these fields (in this order)
+const PLAYERS_ONLY = [
+    "web_name",
+    "status",
+    "team",
+    "type",
+    "form",
+    "now_cost",
+    "total_points",
+    "bonus",
+    "ep_next",
+];
 
-/** Preferred column order for this page (optional) */
-const PLAYERS_ORDER = ["web_name", "status", "team", "type", "now_cost", "total_points", "event_points"];
+// Page-specific tweaks (labels/formatters/align). Omit `label` to use base/camelCase.
+const PLAYERS_PAGE_OVERRIDES: ColumnMap = {
+    web_name: { sticky: true },
+    // example tweak: now_cost: { label: "Price (€)", align: "right" },
+};
 
 export default function PlayersPage() {
     const [params, setParams] = useSearchParams();
@@ -36,14 +45,22 @@ export default function PlayersPage() {
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ["players", page],
         queryFn: async (): Promise<DRFPage<AnyRow>> => {
-            const resp = await api.get(ENDPOINT, { params: { page, limit: 20, offset: (page - 1) * 20 } });
+            const resp = await api.get(ENDPOINT, {
+                params: {
+                    page,                 // PageNumberPagination
+                    limit: 20,            // LimitOffsetPagination (harmless if unused)
+                    offset: (page - 1) * 20,
+                },
+            });
             return resp.data;
         },
         keepPreviousData: true,
     });
 
     const rows = data?.results ?? [];
-    const { columns, stickyKey } = buildColumns(rows, PLAYERS_ORDER, PLAYERS_PAGE_OVERRIDES);
+
+    // Build columns strictly from whitelist; keepMissing shows headers even if some keys aren't on this page
+    const { columns, stickyKey } = buildColumnsOnly(rows, PLAYERS_ONLY, PLAYERS_PAGE_OVERRIDES, { keepMissing: true });
 
     function goPage(n: number) {
         const next = new URLSearchParams(params);
@@ -51,7 +68,7 @@ export default function PlayersPage() {
         setParams(next, { replace: true });
     }
 
-    // page size (best effort)
+    // Derive page size from next/prev if present; fallback 20
     const pageSize = (() => {
         const fallback = 20;
         try {
@@ -63,6 +80,7 @@ export default function PlayersPage() {
         }
     })();
     const totalPages = data?.count ? Math.max(1, Math.ceil(data.count / pageSize)) : undefined;
+
     const canGoPrev  = page > 1 && !isLoading;
     const canGoNext  = !isLoading && (typeof totalPages === "number" ? page < totalPages : !!data?.next);
     const canGoFirst = canGoPrev;
@@ -71,16 +89,19 @@ export default function PlayersPage() {
     function goFirst() { goPage(1); }
     function goLast()  { if (typeof totalPages === "number") goPage(totalPages); }
 
-
     useEffect(() => {}, []);
 
     return (
         <main className="mx-auto max-w-6xl px-4 py-10">
-                <h1 className="page-title" style={{ marginBottom: 12 }}>Players</h1>
+            <h1 className="page-title" style={{ marginBottom: 12 }}>Players</h1>
 
             <div className="table-wrap">
                 {isLoading && <div style={{ padding: 16 }}>Loading…</div>}
-                {isError && <div style={{ padding: 16, color: "#b91c1c" }}>Error: {(error as Error)?.message}</div>}
+                {isError && (
+                    <div style={{ padding: 16, color: "#b91c1c" }}>
+                        Error: {(error as Error)?.message}
+                    </div>
+                )}
 
                 {!isLoading && !isError && (
                     <table className="data">
@@ -113,7 +134,11 @@ export default function PlayersPage() {
                             </tr>
                         ))}
                         {!rows.length && (
-                            <tr><td colSpan={columns.length} style={{ padding: 16 }}>No results</td></tr>
+                            <tr>
+                                <td colSpan={columns.length} style={{ padding: 16 }}>
+                                    No results
+                                </td>
+                            </tr>
                         )}
                         </tbody>
                     </table>
@@ -143,8 +168,8 @@ export default function PlayersPage() {
 
                 {typeof totalPages === "number" && (
                     <span style={{ fontSize: 13 }}>
-      Page <strong>{page}</strong> of <strong>{totalPages}</strong>
-    </span>
+            Page <strong>{page}</strong> of <strong>{totalPages}</strong>
+          </span>
                 )}
 
                 <button
@@ -169,7 +194,6 @@ export default function PlayersPage() {
                     </button>
                 )}
             </div>
-
         </main>
     );
 }
