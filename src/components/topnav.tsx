@@ -37,12 +37,12 @@ export default function TopNav() {
     };
 
     const headerStyle: CSSProperties = {
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 40,
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
         background: colors.bg,
         borderBottom: `1px solid ${colors.border}`,
         backdropFilter: "blur(6px)",
     };
-    const wrapStyle: CSSProperties = { maxWidth: 1120, margin: "0 auto", padding: "0 16px" };
+    const wrapStyle: CSSProperties = { maxWidth: "110%", margin: "0 auto", padding: 0 };
     const navStyle: CSSProperties = {
         display: "flex", alignItems: "center", height: 56, justifyContent: "flex-start", gap: 16,
     };
@@ -105,6 +105,7 @@ export default function TopNav() {
                                     background: colors.bg,
                                     boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
                                     overflow: "hidden",
+                                    zIndex: 1100,
                                 }}
                             >
                                 <DropdownLink to="/players"   label="Players"   onClick={() => setOpen(false)} />

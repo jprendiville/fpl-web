@@ -1,91 +1,221 @@
-/* src/styles/table.css */
+/* ---- kill page-level horizontal scroll ---- */
+html, body, #root { max-width: 100%; overflow-x: hidden; }
+main { max-width: 100%; overflow-x: hidden; }
 
-/* Outer container */
-.table-wrap {
-    border: 1px solid var(--border, #e5e7eb);
-    border-radius: 16px;
-    overflow: auto;
-    background: var(--bg, #ffffff);
-    box-shadow:
-            0 1px 2px rgba(0,0,0,0.04),
-            0 8px 24px rgba(0,0,0,0.05);
+/* Colors + dimensions */
+:root{
+    --bg:#fff;
+    --text:#000;
+    --border:rgb(222,226,230);
+    --header-bg:#339af0;
+    --header-text:#fff;
+    --row-alt:rgba(0,0,0,0);
+    --row-hover:#f5f7ff;
+    --page-indent: 16px;
+
+    /* header row controls */
+    --th-fs: 14px;     /* header font-size */
+    --th-py: 10px;     /* header padding top/bottom */
+
+    /* frozen column widths + total */
+    --freeze-0: 180px; /* player */
+    --freeze-1: 80px;  /* status */
+    --freeze-2: 80px;  /* team */
+    --freeze-3: 80px;  /* pos */
+    --freeze-total: calc(var(--freeze-0) + var(--freeze-1) + var(--freeze-2) + var(--freeze-3));
+
+    --page-gutter: 16px; /* control page/table left+right margins */
 }
 
-/* Base table */
-table.data {
-    width: 100%;
+/* Toolbar */
+.page-toolbar{
+    position: sticky;
+    z-index: 100;
+    display: grid;
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+    align-items: end;
+    padding: 8px 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    overflow-y: visible;
+    margin-bottom: var(--page-gutter);
+    margin-left: var(--page-gutter);
+    margin-right: var(--page-gutter);
+    margin-inline: var(--page-indent);
+    width: calc(100% - 2 * var(--page-indent));
+    box-sizing: border-box;
+}
+.page-toolbar .page-title{ font-size:18px; font-weight:700; margin:0 12px 0 0; }
+
+.filters-row{
+    display:flex; flex-wrap:nowrap; gap:8px; align-items:end;
+    min-width:max-content;
+}
+.filters-row label{ display:grid; gap:4px; min-width:160px; flex:0 0 160px; }
+.filters-row select,
+.filters-row input[type="number"],
+.filters-row input[type="text"]{
+    border:1px solid var(--border); border-radius:12px; padding:6px 10px;
+    font-size:13px; background:var(--bg); color:var(--text);
+}
+
+/* ---- TABLE CARD (no scrolling here) ---- */
+.table-wrap{
+    border:1px solid var(--border);
+    border-radius:16px;
+    background:var(--bg);
+    box-shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.05);
+    overflow:hidden;
+    position:relative;
+    margin-left: var(--page-gutter);
+    margin-right: var(--page-gutter);
+    margin-inline: var(--page-indent);
+    width: calc(100% - 2 * var(--page-indent));
+    box-sizing: border-box;
+}
+
+/* ---- INNER SCROLLER (scrollbars live here) ---- */
+.table-scroll{
+    max-height:70vh;
+    overflow-x:auto;
+    overflow-y:auto;
+    position:relative;
+    isolation:isolate;   /* new stacking context */
+    contain: paint;
+}
+
+/* ---- Base table ---- */
+table.data{
+    width: max-content;
+    min-width: 100%;
+    table-layout: auto;
     border-collapse: separate;
     border-spacing: 0;
     font-size: 14px;
     line-height: 1.35;
+    color: var(--text);
 }
 
-/* Header cells */
-table.data thead th {
+.btn{
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 6px 10px;
+    font-size: 13px;
+    background: var(--bg);
+    cursor: pointer;
+}
+
+/* Utility: visually hidden (generic, optional) */
+.sr-only{
+    position: absolute !important;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0);
+    white-space: nowrap; border: 0;
+}
+
+/* keep semantic thead but hide it visually (for a11y) */
+.sr-only-thead {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0; padding: 0; margin: -1px;
+}
+
+/* ---------------- HEADER ROW (FAKE, STICKY) ---------------- */
+.fake-header td.fake-th{
     position: sticky;
     top: 0;
-    z-index: 2;
-    background: var(--header-bg, #339af0);   /* matches your sample */
-    color: var(--header-text, #ffffff);
-    text-align: left;
-    text-transform: none;
-    letter-spacing: 0.02em;
+    background: var(--header-bg);
+    color: var(--header-text);
     font-weight: 600;
-    font-size: 12px;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--border, #e5e7eb);
+    font-size: var(--th-fs);
+    line-height: 1.2;
+    padding: var(--th-py) 12px;
+    border-bottom: 1px solid var(--border);
     white-space: nowrap;
+    text-align: left;
+    vertical-align: middle;
+    overflow: visible;         /* don't clip larger text */
+    z-index: 14;               /* baseline header layer */
+    cursor: default;
 }
 
-/* Body cells */
-table.data td {
+/* match alignment helpers used by body */
+.fake-header td.fake-th.num    { text-align: right; }
+.fake-header td.fake-th.center { text-align: center; }
+
+/* ---- BODY CELLS (scope to tbody so header isn't affected) ---- */
+table.data tbody td{
     padding: 8px 12px;
-    border-bottom: 1px solid #f1f5f9; /* subtle divider */
-    max-width: 340px;
+    border-bottom: 1px solid #f1f5f9;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: var(--text, #000000);
-    background: var(--bg, #ffffff);
+    background: var(--bg);
+    color: var(--text);
 }
 
-/* Zebra + hover */
-table.data tbody tr:nth-child(even) {
-    background: var(--row-alt, rgba(0,0,0,0)); /* transparent per your sample */
+/* Zebra */
+table.data tbody tr:nth-child(even){ background: var(--row-alt); }
+
+/* HOVER: skip the fake header row entirely */
+table.data tbody tr:not(.fake-header):hover td{
+    background: var(--row-hover);
 }
 
-table.data tbody tr:hover {
-    background: var(--row-hover, #f5f7ff);
+/* Also skip header for frozen cells on hover */
+tbody tr:not(.fake-header):hover td.freeze-0,
+tbody tr:not(.fake-header):hover td.freeze-1,
+tbody tr:not(.fake-header):hover td.freeze-2,
+tbody tr:not(.fake-header):hover td.freeze-3{
+    background-color: var(--row-hover);
 }
 
-/* Sticky first column — HEADER */
-table.data thead th.sticky-col {
-    position: sticky;
-    left: 0;
-    z-index: 3;                                 /* above body cells */
-    background: var(--header-bg, #339af0);      /* keep header color */
-    color: var(--header-text, #ffffff);
-    box-shadow: 1px 0 0 0 var(--border, #e5e7eb);
+/* Belt-and-braces: header cells always keep header color */
+tbody tr.fake-header td,
+tbody tr.fake-header:hover td{
+    background-color: var(--header-bg) !important;
+    color: var(--header-text) !important;
 }
 
-/* Sticky first column — BODY */
-table.data tbody td.sticky-col {
-    position: sticky;
-    left: 0;
-    z-index: 2;
-    background: inherit;                        /* preserves zebra/hover */
-    box-shadow: 1px 0 0 0 var(--border, #e5e7eb);
+/* Alignment helpers (body) */
+tbody td.num{ text-align:right; font-variant-numeric:tabular-nums; }
+tbody td.center{ text-align:center; }
+
+/* ---- Frozen columns (use variables for widths) ---- */
+.col-player { min-width: var(--freeze-0); width: var(--freeze-0); }
+.col-status { min-width: var(--freeze-1); width: var(--freeze-1); text-align: center; }
+.col-team   { min-width: var(--freeze-2); width: var(--freeze-2); }
+.col-pos    { min-width: var(--freeze-3); width: var(--freeze-3); text-align: center; }
+
+/* left offsets (work for header row and body rows) */
+.fake-header td.freeze-0, tbody td.freeze-0 { position: sticky; left: 0; }
+.fake-header td.freeze-1, tbody td.freeze-1 { position: sticky; left: var(--freeze-0); }
+.fake-header td.freeze-2, tbody td.freeze-2 { position: sticky; left: calc(var(--freeze-0) + var(--freeze-1)); }
+.fake-header td.freeze-3, tbody td.freeze-3 { position: sticky; left: calc(var(--freeze-0) + var(--freeze-1) + var(--freeze-2)); }
+
+/* Frozen header cells float over scrollable columns */
+.fake-header td.freeze-0,
+.fake-header td.freeze-1,
+.fake-header td.freeze-2,
+.fake-header td.freeze-3{
+    z-index: 24;
+    background-clip: padding-box;
+    box-shadow: 1px 0 0 0 var(--border);
 }
 
-/* Numeric + centered alignment helpers */
-td.num { text-align: right; font-variant-numeric: tabular-nums; }
-td.center { text-align: center; }
-
-/* Small JSON / code chip */
-.code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    font-size: 12px;
-    background: #f9fafb;
-    border-radius: 6px;
-    padding: 2px 4px;
+/* Body frozen cells: opaque so scrolled columns don’t show through */
+tbody td.freeze-0,
+tbody td.freeze-1,
+tbody td.freeze-2,
+tbody td.freeze-3{
+    z-index: 12;
+    background-color: var(--bg);
+    background-clip: padding-box;
+    box-shadow: 1px 0 0 0 var(--border);
 }

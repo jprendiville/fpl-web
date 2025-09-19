@@ -1,18 +1,20 @@
-// src/pages/players/players.tsx
+// src/pages/players/defence.tsx
 import type React from "react";
-import { useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import {
     type ColumnMap,
-    buildColumnsOnly,   // ← whitelist builder
+    buildColumnsOnly,
     configFor,
     headerLabel,
     autoAlign,
     formatCell,
 } from "../../lib/columns";
 import "../../styles/table.css";
+import { FREEZE_KEYS, COL_WIDTH_CLASS } from "../../features/players/player-utils";
+import { usePlayerParams } from "../../features/players/player-params";
+import PaginationBar from "../../components/paginationbar";
 
 type AnyRow = Record<string, unknown>;
 type DRFPage<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -33,22 +35,26 @@ const PLAYERS_ONLY = [
 
 // Page-specific tweaks (labels/formatters/align). Omit `label` to use base/camelCase.
 const PLAYERS_PAGE_OVERRIDES: ColumnMap = {
-    web_name: { sticky: true },
-    // example tweak: now_cost: { label: "Price (€)", align: "right" },
+    web_name: {},
 };
 
 export default function DefencePage() {
-    const [params, setParams] = useSearchParams();
-    const page = Number(params.get("page") || "1");
+    const {
+        page, fType, fTeam, fStatus, fMaxPriceUi, fMaxCostTenths,
+        setParam, goPage, goFirst, goLast, clearFilters
+    } = usePlayerParams();
 
+    // ---- Data: players list ----
     const { data, isLoading, isError, error } = useQuery({
-        queryKey: ["defence", page],
+        queryKey: ["defence", page, fType, fTeam, fStatus, fMaxPriceUi],
         queryFn: async (): Promise<DRFPage<AnyRow>> => {
             const resp = await api.get(ENDPOINT, {
                 params: {
-                    page,                 // PageNumberPagination
-                    limit: 20,            // LimitOffsetPagination (harmless if unused)
-                    offset: (page - 1) * 20,
+                    page,
+                    ...(fType ? { player_type: fType } : {}),
+                    ...(fTeam ? { player_team: fTeam } : {}),
+                    ...(fStatus ? { status: fStatus } : {}),
+                    ...(Number.isFinite(fMaxCostTenths) ? { max_cost: fMaxCostTenths } : {}),
                 },
             });
             return resp.data;
@@ -58,14 +64,81 @@ export default function DefencePage() {
 
     const rows = data?.results ?? [];
 
-    // Build columns strictly from whitelist; keepMissing shows headers even if some keys aren't on this page
-    const { columns, stickyKey } = buildColumnsOnly(rows, PLAYERS_ONLY, PLAYERS_PAGE_OVERRIDES, { keepMissing: true });
+    // Build columns strictly from whitelist
+    const { columns } = buildColumnsOnly(rows, PLAYERS_ONLY, PLAYERS_PAGE_OVERRIDES, { keepMissing: true });
 
-    function goPage(n: number) {
-        const next = new URLSearchParams(params);
-        next.set("page", String(n));
-        setParams(next, { replace: true });
-    }
+    // ---- Options: fetch all Teams & Types from dedicated endpoints (fallback to current page if needed) ----
+    // Teams
+    const { data: teamsApi } = useQuery({
+        queryKey: ["teams-options"],
+        queryFn: async (): Promise<DRFPage<any>> => {
+            try {
+                const r = await api.get("/v1/teams/", { params: { page_size: 200 } });
+                return r.data;
+            } catch {
+                try {
+                    const r2 = await api.get("/v1/clubs/", { params: { page_size: 200 } });
+                    return r2.data;
+                } catch {
+                    return { count: 0, next: null, previous: null, results: [] };
+                }
+            }
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const teamOptions = useMemo(() => {
+        const list = teamsApi?.results ?? [];
+        if (list.length) {
+            return list.map((t: any) => ({
+                id: t.id,
+                label: t.short_name || t.name || String(t.id),
+            }));
+        }
+        // fallback: derive from current page rows
+        const seen = new Map<number, string>();
+        rows.forEach((r: AnyRow) => {
+            const t = r["team"] as any;
+            if (t && typeof t.id === "number") seen.set(t.id, t.short_name || t.name || String(t.id));
+        });
+        return Array.from(seen, ([id, label]) => ({ id, label }));
+    }, [teamsApi, rows]);
+
+    // Element Types / Positions
+    const { data: typesApi } = useQuery({
+        queryKey: ["types-options"],
+        queryFn: async (): Promise<DRFPage<any>> => {
+            try {
+                const r = await api.get("/v1/element-types/", { params: { page_size: 50 } });
+                return r.data;
+            } catch {
+                try {
+                    const r2 = await api.get("/v1/types/", { params: { page_size: 50 } });
+                    return r2.data;
+                } catch {
+                    return { count: 0, next: null, previous: null, results: [] };
+                }
+            }
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const typeOptions = useMemo(() => {
+        const list = typesApi?.results ?? [];
+        if (list.length) {
+            return list.map((t: any) => ({
+                id: t.id,
+                label: t.singular_name_short || t.singular_name || t.name || String(t.id),
+            }));
+        }
+        // fallback: derive from current page rows
+        const seen = new Map<number, string>();
+        rows.forEach((r: AnyRow) => {
+            const t = r["type"] as any;
+            if (t && typeof t.id === "number") seen.set(t.id, t.singular_name_short || t.singular_name || String(t.id));
+        });
+        return Array.from(seen, ([id, label]) => ({ id, label }));
+    }, [typesApi, rows]);
 
     // Derive page size from next/prev if present; fallback 20
     const pageSize = (() => {
@@ -78,60 +151,149 @@ export default function DefencePage() {
             return fallback;
         }
     })();
+
     const totalPages = data?.count ? Math.max(1, Math.ceil(data.count / pageSize)) : undefined;
-
-    const canGoPrev  = page > 1 && !isLoading;
-    const canGoNext  = !isLoading && (typeof totalPages === "number" ? page < totalPages : !!data?.next);
+    const canGoPrev = page > 1 && !isLoading;
+    const canGoNext = !isLoading && (typeof totalPages === "number" ? page < totalPages : !!data?.next);
     const canGoFirst = canGoPrev;
-    const canGoLast  = typeof totalPages === "number" && page < totalPages && !isLoading;
-
-    function goFirst() { goPage(1); }
-    function goLast()  { if (typeof totalPages === "number") goPage(totalPages); }
-
-    useEffect(() => {}, []);
+    const canGoLast = typeof totalPages === "number" && page < totalPages && !isLoading;
 
     return (
         <main className="mx-auto max-w-6xl px-4 py-10">
-            <h1 className="page-title" style={{ marginBottom: 12 }}>Defence</h1>
+            {/* Toolbar: title + filters in one line */}
+            <div className="page-toolbar" role="region" aria-label="Players filters">
+                <h1 className="page-title">Defence</h1>
 
+                <div className="filters-row">
+                    {/* Position */}
+                    <label>
+                        <span style={{ fontSize: 12, color: "#374151" }}>Position</span>
+                        <select
+                            value={fType}
+                            onChange={(e) => setParam("player_type", e.target.value || undefined)}
+                            style={selectStyle}
+                        >
+                            <option value="">All</option>
+                            {typeOptions.map(o => (
+                                <option key={o.id} value={o.id}>{o.label}</option>
+                            ))}
+                        </select>
+                    </label>
+
+                    {/* Team */}
+                    <label>
+                        <span style={{ fontSize: 12, color: "#374151" }}>Team</span>
+                        <select
+                            value={fTeam}
+                            onChange={(e) => setParam("player_team", e.target.value || undefined)}
+                            style={selectStyle}
+                        >
+                            <option value="">All</option>
+                            {teamOptions.map(o => (
+                                <option key={o.id} value={o.id}>{o.label}</option>
+                            ))}
+                        </select>
+                    </label>
+
+                    {/* Status */}
+                    <label>
+                        <span style={{ fontSize: 12, color: "#374151" }}>Status</span>
+                        <select
+                            value={fStatus}
+                            onChange={(e) => setParam("status", e.target.value || undefined)}
+                            style={selectStyle}
+                        >
+                            <option value="">All</option>
+                            <option value="a">Available</option>
+                            <option value="d">Doubtful</option>
+                            <option value="i">Injured</option>
+                            <option value="s">Suspended</option>
+                            <option value="u">Unavailable</option>
+                        </select>
+                    </label>
+
+                    {/* Max price (m) */}
+                    <label>
+                        <span style={{ fontSize: 12, color: "#374151" }}>Max price (m)</span>
+                        <input
+                            type="number"
+                            step="0.1"
+                            min="3.5"
+                            value={fMaxPriceUi}
+                            onChange={(e) => setParam("max_cost", e.target.value ? e.target.value : undefined)}
+                            placeholder="e.g. 6.5"
+                            style={inputStyle}
+                        />
+                    </label>
+
+                    {/* Clear */}
+                    <button onClick={clearFilters} style={btnStyle}>Clear filters</button>
+
+                </div>
+            </div>
+
+            {/* ---- Table ---- */}
             <div className="table-wrap">
-                {isLoading && <div style={{ padding: 16 }}>Loading…</div>}
-                {isError && (
-                    <div style={{ padding: 16, color: "#b91c1c" }}>
-                        Error: {(error as Error)?.message}
-                    </div>
-                )}
-
-                {!isLoading && !isError && (
+                <div className="table-scroll">
                     <table className="data">
-                        <thead>
+                        {/* keep a semantic thead for screen readers only */}
+                        <thead className="sr-only-thead">
                         <tr>
                             {columns.map((c) => (
-                                <th key={c} className={c === stickyKey ? "sticky-col" : ""}>
-                                    {headerLabel(c, PLAYERS_PAGE_OVERRIDES)}
-                                </th>
+                                <th key={c}>{headerLabel(c, PLAYERS_PAGE_OVERRIDES)}</th>
                             ))}
                         </tr>
                         </thead>
+
                         <tbody>
+                        {/* FAKE sticky header that behaves like body cells */}
+                        <tr className="fake-header">
+                            {columns.map((c) => {
+                                const cfg = configFor(c, PLAYERS_PAGE_OVERRIDES);
+                                const align = cfg.align ?? autoAlign(rows[0]?.[c]);
+                                const alignCls = align === "right" ? "num" : align === "center" ? "center" : "";
+
+                                // ✅ use the imported constants
+                                const i = FREEZE_KEYS.indexOf(c as any);
+                                const freeze = i >= 0 ? `freeze-${i}` : "";
+                                const widthCls = COL_WIDTH_CLASS[c] || "";
+
+                                return (
+                                    <td
+                                        key={c}
+                                        className={["fake-th", alignCls, freeze, widthCls].join(" ").trim()}
+                                    >
+                                        {headerLabel(c, PLAYERS_PAGE_OVERRIDES)}
+                                    </td>
+                                );
+                            })}
+                        </tr>
+
+                        {/* DATA ROWS */}
                         {rows.map((row, idx) => (
                             <tr key={idx}>
                                 {columns.map((c) => {
                                     const cfg = configFor(c, PLAYERS_PAGE_OVERRIDES);
                                     const v = (row as AnyRow)[c];
                                     const align = cfg.align ?? autoAlign(v);
-                                    const cls =
-                                        (c === stickyKey ? "sticky-col " : "") +
-                                        (align === "right" ? "num" : align === "center" ? "center" : "");
+                                    const alignCls = align === "right" ? "num" : align === "center" ? "center" : "";
                                     const rendered = cfg.format ? cfg.format(v) : formatCell(v);
+
+                                    // ✅ use the imported constants
+                                    const i = FREEZE_KEYS.indexOf(c as any);
+                                    const freeze = i >= 0 ? `freeze-${i}` : "";
+                                    const widthCls = COL_WIDTH_CLASS[c] || "";
+
                                     return (
-                                        <td key={c} className={cls}>
+                                        <td key={c} className={[alignCls, freeze, widthCls].join(" ").trim()}>
                                             {rendered}
                                         </td>
                                     );
                                 })}
                             </tr>
                         ))}
+
+
                         {!rows.length && (
                             <tr>
                                 <td colSpan={columns.length} style={{ padding: 16 }}>
@@ -141,61 +303,36 @@ export default function DefencePage() {
                         )}
                         </tbody>
                     </table>
-                )}
+                </div>
             </div>
 
-            <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                <button
-                    onClick={goFirst}
-                    disabled={!canGoFirst}
-                    style={btnStyle}
-                    aria-label="First page"
-                    title="First page"
-                >
-                    « First
-                </button>
 
-                <button
-                    onClick={() => goPage(Math.max(1, page - 1))}
-                    disabled={!canGoPrev}
-                    style={btnStyle}
-                    aria-label="Previous page"
-                    title="Previous page"
-                >
-                    Previous
-                </button>
-
-                {typeof totalPages === "number" && (
-                    <span style={{ fontSize: 13 }}>
-            Page <strong>{page}</strong> of <strong>{totalPages}</strong>
-          </span>
-                )}
-
-                <button
-                    onClick={() => goPage(page + 1)}
-                    disabled={!canGoNext}
-                    style={btnStyle}
-                    aria-label="Next page"
-                    title="Next page"
-                >
-                    Next
-                </button>
-
-                {typeof totalPages === "number" && (
-                    <button
-                        onClick={goLast}
-                        disabled={!canGoLast}
-                        style={btnStyle}
-                        aria-label="Last page"
-                        title="Last page"
-                    >
-                        Last »
-                    </button>
-                )}
-            </div>
+            {/* ---- Pagination ---- */}
+            <PaginationBar
+                page={page}
+                totalPages={typeof totalPages === "number" ? totalPages : undefined}
+                canGoFirst={canGoFirst}
+                canGoPrev={canGoPrev}
+                canGoNext={canGoNext}
+                canGoLast={canGoLast}
+                onFirst={goFirst}
+                onPrev={() => goPage(Math.max(1, page - 1))}
+                onNext={() => goPage(page + 1)}
+                onLast={() => goLast(totalPages)}
+            />
         </main>
     );
 }
+
+/* ---------- helpers & local styles ---------- */
+const selectStyle: React.CSSProperties = {
+    border: "1px solid var(--border)",
+    borderRadius: 12,
+    padding: "6px 10px",
+    fontSize: 13,
+    background: "var(--bg)",
+};
+const inputStyle = selectStyle;
 
 const btnStyle: React.CSSProperties = {
     border: "1px solid var(--border)",
