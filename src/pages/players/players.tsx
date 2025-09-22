@@ -15,6 +15,7 @@ import "../../styles/table.css";
 import { FREEZE_KEYS, COL_WIDTH_CLASS } from "../../features/players/player-utils";
 import { usePlayerParams } from "../../features/players/player-params";
 import PaginationBar from "../../components/paginationbar";
+import {normalizeToPage} from "../../features/teams/team-utils.ts";
 
 type AnyRow = Record<string, unknown>;
 type DRFPage<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -74,17 +75,8 @@ export default function PlayersPage() {
     const { data: teamsApi } = useQuery({
         queryKey: ["teams-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
-            try {
-                const r = await api.get("/v1/teams/", { params: { page_size: 200 } });
-                return r.data;
-            } catch {
-                try {
-                    const r2 = await api.get("/v1/clubs/", { params: { page_size: 200 } });
-                    return r2.data;
-                } catch {
-                    return { count: 0, next: null, previous: null, results: [] };
-                }
-            }
+            const r = await api.get("/v1/teams/");
+            return normalizeToPage(r.data);           // <— normalize array -> {results: [...]}
         },
         staleTime: 5 * 60 * 1000,
     });
@@ -110,17 +102,8 @@ export default function PlayersPage() {
     const { data: typesApi } = useQuery({
         queryKey: ["types-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
-            try {
-                const r = await api.get("/v1/element-types/", { params: { page_size: 50 } });
-                return r.data;
-            } catch {
-                try {
-                    const r2 = await api.get("/v1/types/", { params: { page_size: 50 } });
-                    return r2.data;
-                } catch {
-                    return { count: 0, next: null, previous: null, results: [] };
-                }
-            }
+            const r = await api.get("/v1/element-types/");
+            return normalizeToPage(r.data);           // <— same idea
         },
         staleTime: 5 * 60 * 1000,
     });
