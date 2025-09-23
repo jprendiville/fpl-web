@@ -19,10 +19,11 @@ main { max-width: 100%; overflow-x: hidden; }
 
     /* frozen column widths + total */
     --freeze-0: 180px; /* player */
-    --freeze-1: 80px;  /* status */
-    --freeze-2: 80px;  /* team */
-    --freeze-3: 80px;  /* pos */
-    --freeze-total: calc(var(--freeze-0) + var(--freeze-1) + var(--freeze-2) + var(--freeze-3));
+    --freeze-1: 70px;  /* history */
+    --freeze-2: 60px;  /* status */
+    --freeze-3: 60px;  /* team */
+    --freeze-4: 60px;  /* pos */
+    --freeze-total: calc(var(--freeze-0) + var(--freeze-1) + var(--freeze-2) + var(--freeze-3) + var(--freeze-4));
 
     --page-gutter: 16px; /* control page/table left+right margins */
 }
@@ -172,7 +173,8 @@ table.data tbody tr:not(.fake-header):hover td{
 tbody tr:not(.fake-header):hover td.freeze-0,
 tbody tr:not(.fake-header):hover td.freeze-1,
 tbody tr:not(.fake-header):hover td.freeze-2,
-tbody tr:not(.fake-header):hover td.freeze-3{
+tbody tr:not(.fake-header):hover td.freeze-3,
+tbody tr:not(.fake-header):hover td.freeze-4{
     background-color: var(--row-hover);
 }
 
@@ -188,34 +190,47 @@ tbody td.num{ text-align:right; font-variant-numeric:tabular-nums; }
 tbody td.center{ text-align:center; }
 
 /* ---- Frozen columns (use variables for widths) ---- */
-.col-player { min-width: var(--freeze-0); width: var(--freeze-0); }
-.col-status { min-width: var(--freeze-1); width: var(--freeze-1); text-align: center; }
-.col-team   { min-width: var(--freeze-2); width: var(--freeze-2); }
-.col-pos    { min-width: var(--freeze-3); width: var(--freeze-3); text-align: center; }
+.col-player  { min-width: var(--freeze-0); width: var(--freeze-0); max-width: var(--freeze-0); }
+.col-history { min-width: var(--freeze-1); width: var(--freeze-1); max-width: var(--freeze-1); text-align: center; }
+.col-status  { min-width: var(--freeze-2); width: var(--freeze-2); max-width: var(--freeze-2); text-align: center; }
+.col-team    { min-width: var(--freeze-3); width: var(--freeze-3); max-width: var(--freeze-3); }
+.col-pos     { min-width: var(--freeze-4); width: var(--freeze-4); max-width: var(--freeze-4); text-align: center; }
+
+/* make all table cells box-sized so widths are stable */
+table.data td, .fake-header td { box-sizing: border-box; }
 
 /* left offsets (work for header row and body rows) */
 .fake-header td.freeze-0, tbody td.freeze-0 { position: sticky; left: 0; }
 .fake-header td.freeze-1, tbody td.freeze-1 { position: sticky; left: var(--freeze-0); }
 .fake-header td.freeze-2, tbody td.freeze-2 { position: sticky; left: calc(var(--freeze-0) + var(--freeze-1)); }
 .fake-header td.freeze-3, tbody td.freeze-3 { position: sticky; left: calc(var(--freeze-0) + var(--freeze-1) + var(--freeze-2)); }
+.fake-header td.freeze-4, tbody td.freeze-4 { position: sticky; left: calc(var(--freeze-0) + var(--freeze-1) + var(--freeze-2) + var(--freeze-3)); }
 
 /* Frozen header cells float over scrollable columns */
 .fake-header td.freeze-0,
 .fake-header td.freeze-1,
 .fake-header td.freeze-2,
-.fake-header td.freeze-3{
+.fake-header td.freeze-3,
+.fake-header td.freeze-4{
     z-index: 24;
     background-clip: padding-box;
-    box-shadow: 1px 0 0 0 var(--border);
+    border-right: 1px solid var(--border);
 }
 
 /* Body frozen cells: opaque so scrolled columns don’t show through */
 tbody td.freeze-0,
 tbody td.freeze-1,
 tbody td.freeze-2,
-tbody td.freeze-3{
+tbody td.freeze-3,
+tbody td.freeze-4{
     z-index: 12;
     background-color: var(--bg);
     background-clip: padding-box;
-    box-shadow: 1px 0 0 0 var(--border);
+    border-right: 1px solid var(--border);
+}
+
+.fake-header td[class*="freeze-"],
+tbody td[class*="freeze-"]{
+    will-change: left;
+    transform: translateZ(0);
 }

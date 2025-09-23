@@ -1,6 +1,6 @@
 // src/pages/players/defence.tsx
 import type React from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import {
@@ -15,7 +15,8 @@ import "../../styles/table.css";
 import { FREEZE_KEYS, COL_WIDTH_CLASS } from "../../features/players/player-utils";
 import { usePlayerParams } from "../../features/players/player-params";
 import PaginationBar from "../../components/paginationbar";
-import {normalizeToPage} from "../../features/teams/team-utils.ts";
+import { normalizeToPage } from "../../features/teams/team-utils";
+import PlayerHistoryModal from "./player-history";
 
 type AnyRow = Record<string, unknown>;
 type DRFPage<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -25,6 +26,7 @@ const ENDPOINT = "/v1/defence/";
 // Show ONLY these fields (in this order)
 const PLAYERS_ONLY = [
     "web_name",
+    "history",
     "status",
     "team",
     "type",
@@ -32,22 +34,48 @@ const PLAYERS_ONLY = [
     "clean_sheets",
     "total_points",
     "ep_next",
+    "vapm",
+    "yellow_cards",
+    "selected_by_percent",
+    "selected_rank",
+    "selected_rank_type",
+    "threat_rank_type",
+    "corners_and_indirect_freekicks_text",
+    "ict_index_rank_type",
+    "in_dreamteam",
+    "cost_change_event_fall",
+    "ict_index_rank",
+    "second_name",
+    "cost_change_event",
+    "points_per_game",
+    "points_per_game_rank",
+    "points_per_game_rank_type",
 ];
 
 // Page-specific tweaks (labels/formatters/align). Omit `label` to use base/camelCase.
 const PLAYERS_PAGE_OVERRIDES: ColumnMap = {
     web_name: {},
+    history: { label: "History", align: "center" },
 };
 
 export default function DefencePage() {
     const {
-        page, fType, fTeam, fStatus, fMaxPriceUi, fMaxCostTenths,
-        setParam, goPage, goFirst, goLast, clearFilters
+        page,
+        fType,
+        fTeam,
+        fStatus,
+        fMaxPriceUi,
+        fMaxCostTenths,
+        setParam,
+        goPage,
+        goFirst,
+        goLast,
+        clearFilters,
     } = usePlayerParams();
 
     // ---- Data: players list ----
-    const { data, isLoading, isError, error } = useQuery({
-        queryKey: ["defence", page, fType, fTeam, fStatus, fMaxPriceUi],
+    const { data, isLoading } = useQuery({
+        queryKey: ["players", page, fType, fTeam, fStatus, fMaxPriceUi],
         queryFn: async (): Promise<DRFPage<AnyRow>> => {
             const resp = await api.get(ENDPOINT, {
                 params: {
@@ -74,7 +102,7 @@ export default function DefencePage() {
         queryKey: ["teams-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
             const r = await api.get("/v1/teams/");
-            return normalizeToPage(r.data);           // <— normalize array -> {results: [...]}
+            return normalizeToPage(r.data);
         },
         staleTime: 5 * 60 * 1000,
     });
@@ -101,7 +129,7 @@ export default function DefencePage() {
         queryKey: ["types-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
             const r = await api.get("/v1/element-types/");
-            return normalizeToPage(r.data);           // <— same idea
+            return normalizeToPage(r.data);
         },
         staleTime: 5 * 60 * 1000,
     });
@@ -140,6 +168,28 @@ export default function DefencePage() {
     const canGoNext = !isLoading && (typeof totalPages === "number" ? page < totalPages : !!data?.next);
     const canGoFirst = canGoPrev;
     const canGoLast = typeof totalPages === "number" && page < totalPages && !isLoading;
+
+    // ---- Player history modal state ----
+    const [hist, setHist] = useState<{ id: number; summary: any } | null>(null);
+
+    function openHistory(row: AnyRow) {
+        const teamObj = row["team"] as any;
+        const typeObj = row["type"] as any;
+
+        setHist({
+            id: Number(row["id"]),
+            summary: {
+                name: (row["web_name"] as string) || "",
+                team: teamObj?.short_name || teamObj?.name || "",
+                type: typeObj?.singular_name_short || typeObj?.singular_name || "",
+                now_cost: row["now_cost"],
+                total_points: row["total_points"],
+                form: row["form"],
+                vapm: row["vapm"],
+                ep_next: row["ep_next"],
+            },
+        });
+    }
 
     return (
         <main className="mx-auto max-w-6xl px-4 py-10">
@@ -236,16 +286,13 @@ export default function DefencePage() {
                                 const align = cfg.align ?? autoAlign(rows[0]?.[c]);
                                 const alignCls = align === "right" ? "num" : align === "center" ? "center" : "";
 
-                                // ✅ use the imported constants
+                                // sticky + width classes
                                 const i = FREEZE_KEYS.indexOf(c as any);
                                 const freeze = i >= 0 ? `freeze-${i}` : "";
                                 const widthCls = COL_WIDTH_CLASS[c] || "";
 
                                 return (
-                                    <td
-                                        key={c}
-                                        className={["fake-th", alignCls, freeze, widthCls].join(" ").trim()}
-                                    >
+                                    <td key={c} className={["fake-th", alignCls, freeze, widthCls].join(" ").trim()}>
                                         {headerLabel(c, PLAYERS_PAGE_OVERRIDES)}
                                     </td>
                                 );
@@ -262,10 +309,27 @@ export default function DefencePage() {
                                     const alignCls = align === "right" ? "num" : align === "center" ? "center" : "";
                                     const rendered = cfg.format ? cfg.format(v) : formatCell(v);
 
-                                    // ✅ use the imported constants
+                                    // sticky & width classes
                                     const i = FREEZE_KEYS.indexOf(c as any);
                                     const freeze = i >= 0 ? `freeze-${i}` : "";
                                     const widthCls = COL_WIDTH_CLASS[c] || "";
+
+                                    // special-case the history column: show the eye button
+                                    if (c === "history") {
+                                        return (
+                                            <td key={c} className={[alignCls, freeze, widthCls].join(" ").trim()}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openHistory(row)}
+                                                    title="View history"
+                                                    aria-label={`View history for ${(row["web_name"] as string) || "player"}`}
+                                                    style={eyeBtnStyle}
+                                                >
+                                                    👁
+                                                </button>
+                                            </td>
+                                        );
+                                    }
 
                                     return (
                                         <td key={c} className={[alignCls, freeze, widthCls].join(" ").trim()}>
@@ -275,7 +339,6 @@ export default function DefencePage() {
                                 })}
                             </tr>
                         ))}
-
 
                         {!rows.length && (
                             <tr>
@@ -289,7 +352,6 @@ export default function DefencePage() {
                 </div>
             </div>
 
-
             {/* ---- Pagination ---- */}
             <PaginationBar
                 page={page}
@@ -302,6 +364,14 @@ export default function DefencePage() {
                 onPrev={() => goPage(Math.max(1, page - 1))}
                 onNext={() => goPage(page + 1)}
                 onLast={() => goLast(totalPages)}
+            />
+
+            {/* ---- Player History Modal ---- */}
+            <PlayerHistoryModal
+                open={!!hist}
+                onClose={() => setHist(null)}
+                playerId={hist?.id ?? 0}
+                summary={hist?.summary}
             />
         </main>
     );
@@ -324,4 +394,14 @@ const btnStyle: React.CSSProperties = {
     fontSize: 13,
     background: "var(--bg)",
     cursor: "pointer",
+};
+
+const eyeBtnStyle: React.CSSProperties = {
+    border: "1px solid var(--border)",
+    borderRadius: 10,
+    padding: "2px 6px",
+    fontSize: 12,
+    background: "var(--bg)",
+    cursor: "pointer",
+    lineHeight: 1,
 };
