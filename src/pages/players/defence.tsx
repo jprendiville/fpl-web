@@ -35,21 +35,6 @@ const PLAYERS_ONLY = [
     "total_points",
     "ep_next",
     "vapm",
-    "yellow_cards",
-    "selected_by_percent",
-    "selected_rank",
-    "selected_rank_type",
-    "threat_rank_type",
-    "corners_and_indirect_freekicks_text",
-    "ict_index_rank_type",
-    "in_dreamteam",
-    "cost_change_event_fall",
-    "ict_index_rank",
-    "second_name",
-    "cost_change_event",
-    "points_per_game",
-    "points_per_game_rank",
-    "points_per_game_rank_type",
 ];
 
 // Page-specific tweaks (labels/formatters/align). Omit `label` to use base/camelCase.
