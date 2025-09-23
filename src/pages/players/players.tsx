@@ -44,6 +44,14 @@ const PLAYERS_PAGE_OVERRIDES: ColumnMap = {
     history: { label: "History", align: "center" },
 };
 
+const FDR_COLORS: Record<number, string> = {
+    2: "#01fc7a",  // easy (green)
+    3: "#e7e7e7",  // neutral (grey)
+    4: "#ff1751",  // hard (pink/red)
+    5: "#80072d",  // very hard (dark red)
+};
+
+
 export default function PlayersPage() {
     const {
         page,
@@ -82,7 +90,17 @@ export default function PlayersPage() {
     // Build columns strictly from whitelist
     const { columns } = buildColumnsOnly(rows, PLAYERS_ONLY, PLAYERS_PAGE_OVERRIDES, { keepMissing: true });
 
-    // ---- Options: fetch all Teams & Types (unpaginated) ----
+    // ---- Data: upcoming events (for headers) ----
+    const { data: events } = useQuery({
+        queryKey: ["upcoming-events"],
+        queryFn: async (): Promise<any[]> => {
+            const r = await api.get("/v1/events/upcoming/");
+            return r.data; // list of { id, name, deadline_time }
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+
+    // ---- Options: fetch all Teams (unpaginated) ----
     const { data: teamsApi } = useQuery({
         queryKey: ["teams-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
@@ -92,6 +110,7 @@ export default function PlayersPage() {
         staleTime: 5 * 60 * 1000,
     });
 
+    // This is used to populate the team filter
     const teamOptions = useMemo(() => {
         const list = teamsApi?.results ?? [];
         if (list.length) {
@@ -109,6 +128,7 @@ export default function PlayersPage() {
         return Array.from(seen, ([id, label]) => ({ id, label }));
     }, [teamsApi, rows]);
 
+    // ---- Options: fetch all Element Types (unpaginated) ----
     const { data: typesApi } = useQuery({
         queryKey: ["types-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
@@ -118,6 +138,7 @@ export default function PlayersPage() {
         staleTime: 5 * 60 * 1000,
     });
 
+    // This is used to populate the team filter
     const typeOptions = useMemo(() => {
         const list = typesApi?.results ?? [];
         if (list.length) {
@@ -281,6 +302,31 @@ export default function PlayersPage() {
                                     </td>
                                 );
                             })}
+
+                            {/* Add dynamic event headers */}
+                            {events?.map(ev => {
+                                const d = new Date(ev.deadline_time);
+                                const day = d.getDate();
+                                const month = d.toLocaleString("en-GB", { month: "short" });
+                                const time = d.toLocaleTimeString("en-GB", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: false,
+                                });
+
+                                return (
+                                    <td key={`ev-${ev.id}`} className="fake-th center">
+                                        {/* Main line: Gameweek N (same style as other headers) */}
+                                        <div>{`Gameweek ${ev.id}`}</div>
+
+                                        {/* Sub-line: date + time, lighter/smaller */}
+                                        <div className="fake-th center">
+                                            {day} {month} {time}
+                                        </div>
+                                    </td>
+                                );
+                            })}
+
                         </tr>
 
                         {/* DATA ROWS */}
@@ -321,6 +367,25 @@ export default function PlayersPage() {
                                         </td>
                                     );
                                 })}
+                                {/* Add next_games cells */}
+                                {events?.map(ev => {
+                                    const nextGames: any[] = (row as AnyRow)["next_games"] ?? [];
+                                    const ng = nextGames.find(g => g.event === ev.id);
+                                    const opp = ng?.opponents;
+
+                                    const bg = opp ? FDR_COLORS[opp.color as number] || "transparent" : "transparent";
+
+                                    return (
+                                        <td
+                                            key={`ng-${row["id"]}-${ev.id}`}
+                                            className="center"
+                                            style={{ backgroundColor: bg }}
+                                        >
+                                            {opp ? opp.text : ""}
+                                        </td>
+                                    );
+                                })}
+
                             </tr>
                         ))}
 
