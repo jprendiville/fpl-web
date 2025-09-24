@@ -234,3 +234,12 @@ tbody td[class*="freeze-"]{
     will-change: left;
     transform: translateZ(0);
 }
+
+
+.fdr-scroll {
+    max-height: none !important;   /* let it grow naturally */
+    overflow-y: visible !important;
+}
+.fdr-table table.data tbody td {
+    padding: 7px 12px;  /* reduce top/bottom padding by 1px */
+}

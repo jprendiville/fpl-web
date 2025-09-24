@@ -11,17 +11,20 @@ import {
     autoAlign,
     formatCell,
 } from "../../lib/columns";
+import "../../styles/global.css"
 import "../../styles/table.css";
 import { FREEZE_KEYS, COL_WIDTH_CLASS } from "../../features/players/player-utils";
 import { usePlayerParams } from "../../features/players/player-params";
 import PaginationBar from "../../components/paginationbar";
-import { normalizeToPage } from "../../features/teams/team-utils";
+import { normalizeToPage, getFdrColors } from "../../features/teams/team-utils";
 import PlayerHistoryModal from "./player-history";
 
 type AnyRow = Record<string, unknown>;
 type DRFPage<T> = { count: number; next: string | null; previous: string | null; results: T[] };
 
 const ENDPOINT = "/v1/players/";
+
+const FDR_COLORS = getFdrColors();
 
 // Show ONLY these fields (in this order)
 const PLAYERS_ONLY = [
@@ -43,14 +46,6 @@ const PLAYERS_PAGE_OVERRIDES: ColumnMap = {
     web_name: {},
     history: { label: "History", align: "center" },
 };
-
-const FDR_COLORS: Record<number, string> = {
-    2: "#01fc7a",  // easy (green)
-    3: "#e7e7e7",  // neutral (grey)
-    4: "#ff1751",  // hard (pink/red)
-    5: "#80072d",  // very hard (dark red)
-};
-
 
 export default function PlayersPage() {
     const {
@@ -133,12 +128,12 @@ export default function PlayersPage() {
         queryKey: ["types-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
             const r = await api.get("/v1/element-types/");
-            return normalizeToPage(r.data);
+            return r.data;
         },
         staleTime: 5 * 60 * 1000,
     });
 
-    // This is used to populate the team filter
+    // This is used to populate the element type filter
     const typeOptions = useMemo(() => {
         const list = typesApi?.results ?? [];
         if (list.length) {
@@ -316,10 +311,7 @@ export default function PlayersPage() {
 
                                 return (
                                     <td key={`ev-${ev.id}`} className="fake-th center">
-                                        {/* Main line: Gameweek N (same style as other headers) */}
                                         <div>{`Gameweek ${ev.id}`}</div>
-
-                                        {/* Sub-line: date + time, lighter/smaller */}
                                         <div className="fake-th center">
                                             {day} {month} {time}
                                         </div>
