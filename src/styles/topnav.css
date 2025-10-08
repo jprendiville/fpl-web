@@ -1,45 +1,86 @@
+/* src/styles/topnav.css */
+:root { --nav-height: 56px; }
+
+html, body, #root { margin: 0; padding: 0; }
+
+main { padding-top: var(--nav-height); }
+
+/* Header */
+.app-nav {
+    position: fixed;
+    inset: 0 0 auto 0;       /* top:0; left:0; right:0 */
+    height: var(--nav-height);
+    z-index: 1000;
+    background: var(--bg, #fff);
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    backdrop-filter: blur(6px);
+}
+
+/* Inner wrap and bar */
+.app-nav__wrap { max-width: 100%; margin: 0 auto; }
+.app-nav__bar  {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: var(--nav-height);
+    padding: 0 16px;
+}
+
+/* Buttons/links */
 .nav-btn {
     padding: 8px 12px;
     border-radius: 12px;
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;
-    background: transparent;
     color: var(--text, #374151);
+    background: transparent;
+    border: 0;
     cursor: pointer;
-    border: none;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    appearance: none;
-    -webkit-appearance: none;
+    transition: opacity 0.15s ease;
 }
-
-.nav-btn:hover {
-    background: var(--accent, #111827) !important; /* or your desired hover color */
-    color: inherit;
+.nav-btn:not(.nav-active):hover {
+    opacity: 0.7;
 }
-
-.nav-btn:focus, .nav-btn:active {
-    background: inherit;
-    color: inherit;
-    outline: none;
-}
-
 .nav-active {
-    background: var(--accent, #111827);
-    color: var(--on-accent, #ffffff);
+    background: var(--accent, #111827) !important;
+    color: var(--on-accent, #fff) !important;
 }
-
+.nav-active:hover {
+    background: var(--accent, #111827);
+    color: var(--on-accent, #fff);
+}
+/* Dropdown */
 .dropdown-menu {
     position: absolute;
-    top: 100%; /* align immediately under the button */
-    left: 0; /* margin-top: 8px; <-- REMOVE this */
-    width: 200px;
+    top: calc(100% + 6px);
+    left: 0;
+    background: var(--bg, #fff);
     border: 1px solid var(--border, #e5e7eb);
     border-radius: 12px;
-    background: var(--bg, #ffffff);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    overflow: hidden;
-    z-index: 1100;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    min-width: 180px;
+    padding: 6px;
+    z-index: 1001;
+}
+.dropdown-link {
+    display: block;
+    padding: 10px 12px;
+    font-size: 14px;
+    text-decoration: none;
+    color: var(--text, #374151);
+    border-radius: 8px;
+    transition: background 0.15s ease;
+}
+.dropdown-link:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+.dropdown-link[aria-current="page"] {
+    background: var(--accent, #111827);
+    color: var(--on-accent, #fff);
+}
+
+.app-nav + div[aria-hidden="true"] {
+    display: none !important;
+    height: 0 !important;
 }

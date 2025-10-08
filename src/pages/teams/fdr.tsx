@@ -36,7 +36,7 @@ export default function TeamsPage() {
     });
 
     return (
-        <main className="mx-auto max-w-6xl px-4">
+        <main className="mx-auto max-w-6xl px-4 page--compact">
             <div className="page-toolbar" role="region" aria-label="Teams FDR">
                 <h1 className="page-title">Teams – Fixture Difficulty</h1>
             </div>
@@ -45,7 +45,6 @@ export default function TeamsPage() {
             <div className="table-wrap fdr-table">
                 <div className="table-scroll fdr-scroll">
                     <table className="data">
-                        {/* semantic thead for a11y */}
                         <thead className="sr-only-thead">
                         <tr>
                             {TEAMS_ONLY.map(c => <th key={c}>{c}</th>)}
@@ -80,8 +79,8 @@ export default function TeamsPage() {
                         {/* DATA ROWS */}
                         {rows.map((row, idx) => (
                             <tr key={idx}>
-                                <td className="freeze-0 col-short_name">
-                                    {row["short_name"] || row["name"]}
+                                <td className="freeze-0 col-name">
+                                    {row["name"] || row["name"]}
                                 </td>
 
                                 {events?.map(ev => {

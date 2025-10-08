@@ -1,6 +1,6 @@
 // src/features/teams/team-utils.ts
 
-export const FREEZE_KEYS = ["short_name"] as const;
+export const FREEZE_KEYS = ["name"] as const;
 
 export interface DRFPage<T> {
     count: number;

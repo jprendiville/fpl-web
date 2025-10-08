@@ -1,6 +1,5 @@
 /* ---- kill page-level horizontal scroll ---- */
 html, body, #root { max-width: 100%; overflow-x: hidden; }
-main { max-width: 100%; overflow-x: hidden; }
 
 /* Colors + dimensions */
 :root{
@@ -25,7 +24,8 @@ main { max-width: 100%; overflow-x: hidden; }
     --freeze-4: 60px;  /* pos */
     --freeze-total: calc(var(--freeze-0) + var(--freeze-1) + var(--freeze-2) + var(--freeze-3) + var(--freeze-4));
 
-    --page-gutter: 16px; /* control page/table left+right margins */
+    --page-gutter: 16px;      /* control page/table left+right margins */
+    --content-tuck: 60px;     /* how far to pull content up on compact pages */
 }
 
 /* Toolbar */
@@ -48,8 +48,13 @@ main { max-width: 100%; overflow-x: hidden; }
     width: calc(100% - 2 * var(--page-indent));
     box-sizing: border-box;
 }
-.page-toolbar .page-title{ font-size:18px; font-weight:700; margin:0 12px 0 0; }
+.page-toolbar .page-title{
+    font-size:18px;
+    font-weight:700;
+    margin:0;
+}
 
+/* Filters row */
 .filters-row{
     display:flex; flex-wrap:nowrap; gap:8px; align-items:end;
     min-width:max-content;
@@ -235,7 +240,7 @@ tbody td[class*="freeze-"]{
     transform: translateZ(0);
 }
 
-
+/* ---- FDR page small tweaks ---- */
 .fdr-scroll {
     max-height: none !important;   /* let it grow naturally */
     overflow-y: visible !important;
@@ -243,3 +248,10 @@ tbody td[class*="freeze-"]{
 .fdr-table table.data tbody td {
     padding: 7px 12px;  /* reduce top/bottom padding by 1px */
 }
+
+/* ---- Compact pages: reduce top gap under fixed nav ---- */
+.page--compact .page-toolbar{
+    margin-top: calc(-1 * var(--content-tuck));  /* pull the title/filters up */
+    padding-top: 0;                               /* no extra breathing room */
+}
+.page--compact .page-title{ margin: 0; }         /* ensure the h1 is tight */

@@ -19,21 +19,13 @@ export default function TopNav() {
         pathname.includes("/fdr") ||
         pathname.includes("/league-table");
 
-    // close dropdown on outside click / Esc
     useEffect(() => {
         const onDocClick = (e: MouseEvent) => {
-            if (playersRef.current && !playersRef.current.contains(e.target as Node)) {
-                setPlayersOpen(false);
-            }
-            if (teamsRef.current && !teamsRef.current.contains(e.target as Node)) {
-                setTeamsOpen(false);
-            }
+            if (playersRef.current && !playersRef.current.contains(e.target as Node)) setPlayersOpen(false);
+            if (teamsRef.current && !teamsRef.current.contains(e.target as Node)) setTeamsOpen(false);
         };
         const onEsc = (e: KeyboardEvent) => {
-            if (e.key === "Escape") {
-                setPlayersOpen(false);
-                setTeamsOpen(false);
-            }
+            if (e.key === "Escape") { setPlayersOpen(false); setTeamsOpen(false); }
         };
         document.addEventListener("click", onDocClick);
         document.addEventListener("keydown", onEsc);
@@ -43,7 +35,6 @@ export default function TopNav() {
         };
     }, []);
 
-    // Palette via CSS vars with safe fallbacks
     const colors = {
         bg: "var(--bg, #ffffff)",
         border: "var(--border, #e5e7eb)",
@@ -66,7 +57,7 @@ export default function TopNav() {
     const navStyle: CSSProperties = {
         display: "flex",
         alignItems: "center",
-        height: 56,
+        height: "var(--nav-height)",
         justifyContent: "flex-start",
         gap: 16,
     };
@@ -79,61 +70,61 @@ export default function TopNav() {
     };
 
     return (
-        <header style={headerStyle}>
-            <div style={wrapStyle}>
-                <nav style={navStyle}>
-                    {/* Home (left) */}
-                    <NavLink
-                        to="/home"
-                        className="nav-btn"
-                        style={({ isActive }) => ({
-                            ...linkBase,
-                            color: isActive ? colors.onAccent : colors.text,
-                            background: isActive ? colors.accent : "transparent",
-                        })}
-                    >
-                        Home
-                    </NavLink>
-
-                    {/* Players dropdown */}
-                    <div style={{ position: "relative" }} ref={playersRef}>
-                        <button
-                            type="button"
-                            className={`nav-btn ${playersOpen || playersActive ? "nav-active" : ""}`}
-                            onClick={() => setPlayersOpen(v => !v)}
+        <>
+            <header className="app-nav" style={headerStyle}>
+                <div className="app-nav__wrap" style={wrapStyle}>
+                    <nav className="app-nav__bar" style={navStyle}>
+                        <NavLink
+                            to="/home"
+                            className="nav-btn"
+                            style={({ isActive }) => ({
+                                ...linkBase,
+                                color: isActive ? colors.onAccent : colors.text,
+                                background: isActive ? colors.accent : "transparent",
+                            })}
                         >
-                            Players
-                        </button>
+                            Home
+                        </NavLink>
 
-                        {playersOpen && (
-                            <div id="players-menu" role="menu" className="dropdown-menu">
-                                <DropdownLink to="/players" label="Players" onClick={() => setPlayersOpen(false)} />
-                                <DropdownLink to="/defence" label="Defence" onClick={() => setPlayersOpen(false)} />
-                                <DropdownLink to="/transfers" label="Transfers" onClick={() => setPlayersOpen(false)} />
-                            </div>
-                        )}
-                    </div>
+                        {/* Players dropdown */}
+                        <div style={{ position: "relative" }} ref={playersRef}>
+                            <button
+                                type="button"
+                                className={`nav-btn ${playersOpen || playersActive ? "nav-active" : ""}`}
+                                onClick={() => setPlayersOpen(v => !v)}
+                            >
+                                Players
+                            </button>
+                            {playersOpen && (
+                                <div id="players-menu" role="menu" className="dropdown-menu">
+                                    <DropdownLink to="/players" label="Players" onClick={() => setPlayersOpen(false)} />
+                                    <DropdownLink to="/defence" label="Defence" onClick={() => setPlayersOpen(false)} />
+                                    <DropdownLink to="/transfers" label="Transfers" onClick={() => setPlayersOpen(false)} />
+                                </div>
+                            )}
+                        </div>
 
-                    {/* Teams dropdown */}
-                    <div style={{ position: "relative" }} ref={teamsRef}>
-                        <button
-                            type="button"
-                            className={`nav-btn ${teamsOpen || teamsActive ? "nav-active" : ""}`}
-                            onClick={() => setTeamsOpen(v => !v)}
-                        >
-                            Teams
-                        </button>
+                        {/* Teams dropdown */}
+                        <div style={{ position: "relative" }} ref={teamsRef}>
+                            <button
+                                type="button"
+                                className={`nav-btn ${teamsOpen || teamsActive ? "nav-active" : ""}`}
+                                onClick={() => setTeamsOpen(v => !v)}
+                            >
+                                Teams
+                            </button>
+                            {teamsOpen && (
+                                <div id="teams-menu" role="menu" className="dropdown-menu">
+                                    <DropdownLink to="/fdr" label="FDR" onClick={() => setTeamsOpen(false)} />
+                                    <DropdownLink to="/league-table" label="League Table" onClick={() => setTeamsOpen(false)} />
+                                </div>
+                            )}
+                        </div>
+                    </nav>
+                </div>
+            </header>
 
-                        {teamsOpen && (
-                            <div id="teams-menu" role="menu" className="dropdown-menu">
-                                <DropdownLink to="/fdr" label="FDR" onClick={() => setTeamsOpen(false)} />
-                                <DropdownLink to="/league-table" label="League Table" onClick={() => setTeamsOpen(false)} />
-                            </div>
-                        )}
-                    </div>
-                </nav>
-            </div>
-        </header>
+        </>
     );
 }
 
@@ -154,11 +145,7 @@ function DropdownLink(
             to={to}
             onClick={onClick}
             role="menuitem"
-            style={({ isActive }) => ({
-                ...itemBase,
-                background: isActive ? "var(--accent, #111827)" : "transparent",
-                color: isActive ? "var(--on-accent, #ffffff)" : "var(--text, #374151)",
-            })}
+            className="dropdown-link"
         >
             {label}
         </NavLink>

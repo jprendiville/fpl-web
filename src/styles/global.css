@@ -1,7 +1,9 @@
 :root {
+
     /* FDR colors */
     --fdr-easy: #01fc7a;      /* 2: easy (green) */
     --fdr-neutral: #e7e7e7;   /* 3: neutral (grey) */
     --fdr-hard: #ff1751;      /* 4: hard (red/pink) */
     --fdr-very-hard: #80072d; /* 5: very hard (dark red) */
 }
+
