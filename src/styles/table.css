@@ -16,16 +16,16 @@ html, body, #root { max-width: 100%; overflow-x: hidden; }
     --th-fs: 14px;     /* header font-size */
     --th-py: 10px;     /* header padding top/bottom */
 
-    /* frozen column widths + total */
-    --freeze-0: 180px; /* player */
-    --freeze-1: 70px;  /* history */
-    --freeze-2: 60px;  /* status */
-    --freeze-3: 60px;  /* team */
-    --freeze-4: 60px;  /* pos */
-    --freeze-total: calc(var(--freeze-0) + var(--freeze-1) + var(--freeze-2) + var(--freeze-3) + var(--freeze-4));
+    /* default frozen column widths (Players/Defence) */
+    --freeze-0: 180px; /* Player */
+    --freeze-1: 70px;  /* History */
+    --freeze-2: 60px;  /* Status */
+    --freeze-3: 60px;  /* Team */
+    --freeze-4: 60px;  /* Pos */
+    --freeze-5: 0px;   /* off by default; Managers overrides */
 
-    --page-gutter: 16px;      /* control page/table left+right margins */
-    --content-tuck: 60px;     /* how far to pull content up on compact pages */
+    --page-gutter: 16px;
+    --content-tuck: 60px;
 }
 
 /* Toolbar */
@@ -48,11 +48,7 @@ html, body, #root { max-width: 100%; overflow-x: hidden; }
     width: calc(100% - 2 * var(--page-indent));
     box-sizing: border-box;
 }
-.page-toolbar .page-title{
-    font-size:18px;
-    font-weight:700;
-    margin:0;
-}
+.page-toolbar .page-title{ font-size:18px; font-weight:700; margin:0; }
 
 /* Filters row */
 .filters-row{
@@ -88,7 +84,7 @@ html, body, #root { max-width: 100%; overflow-x: hidden; }
     overflow-x:auto;
     overflow-y:auto;
     position:relative;
-    isolation:isolate;   /* new stacking context */
+    isolation:isolate;
     contain: paint;
 }
 
@@ -113,7 +109,7 @@ table.data{
     cursor: pointer;
 }
 
-/* Utility: visually hidden (generic, optional) */
+/* Utility: visually hidden */
 .sr-only{
     position: absolute !important;
     width: 1px; height: 1px;
@@ -121,15 +117,11 @@ table.data{
     overflow: hidden; clip: rect(0,0,0,0);
     white-space: nowrap; border: 0;
 }
-
 /* keep semantic thead but hide it visually (for a11y) */
-.sr-only-thead {
-    position: absolute;
-    width: 1px; height: 1px;
-    overflow: hidden;
-    clip: rect(0,0,0,0);
-    white-space: nowrap;
-    border: 0; padding: 0; margin: -1px;
+.sr-only-thead{
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip: rect(0,0,0,0);
+    white-space: nowrap; border: 0; padding: 0; margin: -1px;
 }
 
 /* ---------------- HEADER ROW (FAKE, STICKY) ---------------- */
@@ -146,14 +138,12 @@ table.data{
     white-space: nowrap;
     text-align: left;
     vertical-align: middle;
-    overflow: visible;         /* don't clip larger text */
-    z-index: 14;               /* baseline header layer */
+    overflow: visible;
+    z-index: 14;
     cursor: default;
 }
-
-/* match alignment helpers used by body */
-.fake-header td.fake-th.num    { text-align: right; }
-.fake-header td.fake-th.center { text-align: center; }
+.fake-header td.fake-th.num{ text-align: right; }
+.fake-header td.fake-th.center{ text-align: center; }
 
 /* ---- BODY CELLS (scope to tbody so header isn't affected) ---- */
 table.data tbody td{
@@ -170,16 +160,15 @@ table.data tbody td{
 table.data tbody tr:nth-child(even){ background: var(--row-alt); }
 
 /* HOVER: skip the fake header row entirely */
-table.data tbody tr:not(.fake-header):hover td{
-    background: var(--row-hover);
-}
+table.data tbody tr:not(.fake-header):hover td{ background: var(--row-hover); }
 
 /* Also skip header for frozen cells on hover */
 tbody tr:not(.fake-header):hover td.freeze-0,
 tbody tr:not(.fake-header):hover td.freeze-1,
 tbody tr:not(.fake-header):hover td.freeze-2,
 tbody tr:not(.fake-header):hover td.freeze-3,
-tbody tr:not(.fake-header):hover td.freeze-4{
+tbody tr:not(.fake-header):hover td.freeze-4,
+tbody tr:not(.fake-header):hover td.freeze-5{
     background-color: var(--row-hover);
 }
 
@@ -194,12 +183,21 @@ tbody tr.fake-header:hover td{
 tbody td.num{ text-align:right; font-variant-numeric:tabular-nums; }
 tbody td.center{ text-align:center; }
 
-/* ---- Frozen columns (use variables for widths) ---- */
+/* ---- Frozen column width helpers (class ties a column to a lane) ---- */
 .col-player  { min-width: var(--freeze-0); width: var(--freeze-0); max-width: var(--freeze-0); }
 .col-history { min-width: var(--freeze-1); width: var(--freeze-1); max-width: var(--freeze-1); text-align: center; }
 .col-status  { min-width: var(--freeze-2); width: var(--freeze-2); max-width: var(--freeze-2); text-align: center; }
 .col-team    { min-width: var(--freeze-3); width: var(--freeze-3); max-width: var(--freeze-3); }
 .col-pos     { min-width: var(--freeze-4); width: var(--freeze-4); max-width: var(--freeze-4); text-align: center; }
+
+/* Managers-only extra frozen lane (slot/index) */
+.col-slot{
+    min-width: var(--freeze-0); /* remapped under .managers-table */
+    width: var(--freeze-0);
+    max-width: var(--freeze-0);
+    text-align: center;
+    box-sizing: border-box;
+}
 
 /* make all table cells box-sized so widths are stable */
 table.data td, .fake-header td { box-sizing: border-box; }
@@ -210,13 +208,18 @@ table.data td, .fake-header td { box-sizing: border-box; }
 .fake-header td.freeze-2, tbody td.freeze-2 { position: sticky; left: calc(var(--freeze-0) + var(--freeze-1)); }
 .fake-header td.freeze-3, tbody td.freeze-3 { position: sticky; left: calc(var(--freeze-0) + var(--freeze-1) + var(--freeze-2)); }
 .fake-header td.freeze-4, tbody td.freeze-4 { position: sticky; left: calc(var(--freeze-0) + var(--freeze-1) + var(--freeze-2) + var(--freeze-3)); }
+.fake-header td.freeze-5, tbody td.freeze-5{
+    position: sticky;
+    left: calc(var(--freeze-0) + var(--freeze-1) + var(--freeze-2) + var(--freeze-3) + var(--freeze-4));
+}
 
 /* Frozen header cells float over scrollable columns */
 .fake-header td.freeze-0,
 .fake-header td.freeze-1,
 .fake-header td.freeze-2,
 .fake-header td.freeze-3,
-.fake-header td.freeze-4{
+.fake-header td.freeze-4,
+.fake-header td.freeze-5{
     z-index: 24;
     background-clip: padding-box;
     border-right: 1px solid var(--border);
@@ -227,7 +230,8 @@ tbody td.freeze-0,
 tbody td.freeze-1,
 tbody td.freeze-2,
 tbody td.freeze-3,
-tbody td.freeze-4{
+tbody td.freeze-4,
+tbody td.freeze-5{
     z-index: 12;
     background-color: var(--bg);
     background-clip: padding-box;
@@ -241,17 +245,57 @@ tbody td[class*="freeze-"]{
 }
 
 /* ---- FDR page small tweaks ---- */
-.fdr-scroll {
-    max-height: none !important;   /* let it grow naturally */
-    overflow-y: visible !important;
-}
-.fdr-table table.data tbody td {
-    padding: 7px 12px;  /* reduce top/bottom padding by 1px */
-}
+.fdr-scroll { max-height: none !important; overflow-y: visible !important; }
+.fdr-table table.data tbody td { padding: 7px 12px; }
 
 /* ---- Compact pages: reduce top gap under fixed nav ---- */
-.page--compact .page-toolbar{
-    margin-top: calc(-1 * var(--content-tuck));  /* pull the title/filters up */
-    padding-top: 0;                               /* no extra breathing room */
+.page--compact .page-toolbar{ margin-top: calc(-1 * var(--content-tuck)); padding-top: 0; }
+.page--compact .page-title{ margin: 0; }
+
+/* Bench rows dimming (no transparency bleed) */
+.table-wrap .table-scroll table.data tbody tr.muted-row td { color: #9ca3af !important; }
+.table-wrap .table-scroll table.data tbody tr.muted-row td.freeze-0,
+.table-wrap .table-scroll table.data tbody tr.muted-row td.freeze-1,
+.table-wrap .table-scroll table.data tbody tr.muted-row td.freeze-2,
+.table-wrap .table-scroll table.data tbody tr.muted-row td.freeze-3,
+.table-wrap .table-scroll table.data tbody tr.muted-row td.freeze-4,
+.table-wrap .table-scroll table.data tbody tr.muted-row td.freeze-5{
+    background-color: var(--bg) !important;
 }
-.page--compact .page-title{ margin: 0; }         /* ensure the h1 is tight */
+.table-wrap .table-scroll table.data tbody tr.muted-row td:not([class*="freeze-"]){
+    background-image: linear-gradient(rgba(255,255,255,.25), rgba(255,255,255,.25));
+    background-blend-mode: lighten;
+}
+
+/* ---------- Managers page: remap frozen lanes & widths ---------- */
+/* On Managers we want: lane-0 = slot/index, lane-1 = Player, lane-2..4 as usual, lane-5 = Pos (type) */
+.table-wrap.managers-table{
+    --freeze-0: 44px;   /* slot/index */
+    --freeze-1: 180px;  /* Player (web_name) */
+    --freeze-2: 70px;   /* History */
+    --freeze-3: 60px;   /* Status */
+    --freeze-4: 60px;   /* Team */
+    --freeze-5: 60px;   /* Pos (type) */
+}
+
+/* Remap the helper classes only within Managers */
+.table-wrap.managers-table .col-slot{
+    min-width: var(--freeze-0); width: var(--freeze-0); max-width: var(--freeze-0);
+}
+.table-wrap.managers-table .col-player{
+    min-width: var(--freeze-1); width: var(--freeze-1); max-width: var(--freeze-1);
+}
+.table-wrap.managers-table .col-pos{
+    min-width: var(--freeze-5); width: var(--freeze-5); max-width: var(--freeze-5);
+}
+
+/* Make Managers widths match Players/Defence for the early columns */
+.table-wrap.managers-table .col-history{
+    min-width: var(--freeze-2); width: var(--freeze-2); max-width: var(--freeze-2);
+}
+.table-wrap.managers-table .col-status{
+    min-width: var(--freeze-3); width: var(--freeze-3); max-width: var(--freeze-3);
+}
+.table-wrap.managers-table .col-team{
+    min-width: var(--freeze-4); width: var(--freeze-4); max-width: var(--freeze-4);
+}

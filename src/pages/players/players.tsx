@@ -1,5 +1,5 @@
 // src/pages/players/players.tsx
-import PlayerTable from "../../components/PlayerTable";
+import PlayerTable from "../../components/playertable";
 import type { ColumnMap } from "../../lib/columns";
 
 const PLAYERS_ONLY = [

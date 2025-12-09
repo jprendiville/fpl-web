@@ -5,8 +5,10 @@ import "../styles/topnav.css";
 
 export default function TopNav() {
     const [playersOpen, setPlayersOpen] = useState(false);
+    const [managersOpen, setManagersOpen] = useState(false);
     const [teamsOpen, setTeamsOpen] = useState(false);
     const playersRef = useRef<HTMLDivElement | null>(null);
+    const managersRef = useRef<HTMLDivElement | null>(null);
     const teamsRef = useRef<HTMLDivElement | null>(null);
     const { pathname } = useLocation();
 
@@ -15,6 +17,9 @@ export default function TopNav() {
         pathname.includes("/defence") ||
         pathname.includes("/transfers");
 
+    const managersActive =
+        pathname.includes("/managers");
+
     const teamsActive =
         pathname.includes("/fdr") ||
         pathname.includes("/league-table");
@@ -22,10 +27,11 @@ export default function TopNav() {
     useEffect(() => {
         const onDocClick = (e: MouseEvent) => {
             if (playersRef.current && !playersRef.current.contains(e.target as Node)) setPlayersOpen(false);
+            if (managersRef.current && !managersRef.current.contains(e.target as Node)) setManagersOpen(false);
             if (teamsRef.current && !teamsRef.current.contains(e.target as Node)) setTeamsOpen(false);
         };
         const onEsc = (e: KeyboardEvent) => {
-            if (e.key === "Escape") { setPlayersOpen(false); setTeamsOpen(false); }
+            if (e.key === "Escape") { setPlayersOpen(false); setManagersOpen(False); setTeamsOpen(false); }
         };
         document.addEventListener("click", onDocClick);
         document.addEventListener("keydown", onEsc);
@@ -103,6 +109,19 @@ export default function TopNav() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Managers */}
+                        <NavLink
+                            to="/managers"
+                            className="nav-btn"
+                            style={({ isActive }) => ({
+                                ...linkBase,
+                                color: isActive ? colors.onAccent : colors.text,
+                                background: isActive ? colors.accent : "transparent",
+                            })}
+                        >
+                            Managers
+                        </NavLink>
 
                         {/* Teams dropdown */}
                         <div style={{ position: "relative" }} ref={teamsRef}>
