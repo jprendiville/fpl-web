@@ -1,6 +1,6 @@
 // src/pages/managers.tsx
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";  // <-- Link added
 import ManagerTable from "../../components/managertable";
 import type { ColumnMap } from "../../lib/columns";
 
@@ -20,7 +20,7 @@ const MANAGER_COLS = [
 ];
 
 const MANAGER_OVERRIDES: ColumnMap = {
-    position: { label: "\u00A0", align: "center"},
+    position: { label: "\u00A0", align: "center" },
     web_name: {},
     history: { label: "History", align: "center" },
 };
@@ -50,14 +50,13 @@ export default function ManagersPage() {
         setSp({});
     }
 
+    const leaguesHref = `/manager-leagues${hasIds ? `?ids=${encodeURIComponent(idsParam)}` : ""}`;
+
     return (
-        <main className="mx-auto max-w-6xl px-4 page--compact managers-page">
-            <div
-                className="page-toolbar"
-                role="region"
-                aria-label="Managers"
-            >
+        <main className="mx-auto max-w-6xl px-4 page--compact">
+            <div className="page-toolbar" role="region" aria-label="Managers">
                 <h1 className="page-title">Managers</h1>
+
                 <form onSubmit={submit} className="filters-row" style={{ alignItems: "end" }}>
                     <label>
                         <span style={{ fontSize: 12, color: "#374151" }}>Manager ID(s)</span>
@@ -75,11 +74,22 @@ export default function ManagersPage() {
                             }}
                         />
                     </label>
+
                     <button type="submit" className="btn">Load</button>
+
                     {hasIds && (
-                        <button type="button" className="btn" onClick={clearIds}>
-                            Clear
-                        </button>
+                        <>
+                            <button type="button" className="btn" onClick={clearIds}>Clear</button>
+                            <Link
+                                to={leaguesHref}
+                                className="btn"
+                                aria-disabled={!hasIds}
+                                onClick={(e) => { if (!hasIds) e.preventDefault(); }}
+                                style={{ textDecoration: "none" }}
+                            >
+                                Leagues
+                            </Link>
+                        </>
                     )}
                 </form>
             </div>
@@ -94,7 +104,7 @@ export default function ManagersPage() {
                 </div>
             ) : (
                 <ManagerTable
-                    ids={idsParam} // ← pulled from the URL
+                    ids={idsParam}
                     title="Manager Picks"
                     columnsToShow={MANAGER_COLS}
                     columnOverrides={MANAGER_OVERRIDES}
