@@ -1,6 +1,7 @@
+// src/pages/manager-leagues.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 
 import "../../styles/global.css";
@@ -54,9 +55,12 @@ export default function ManagerLeaguesPage() {
         if (normalized) setSp({ ids: normalized });
         else setSp({});
     }
-    function clearIds() { setInput(""); setSp({}); }
+    function clearIds() {
+        setInput("");
+        setSp({});
+    }
 
-    const { data, isLoading } = useQuery({
+    const { data, isLoading, refetch } = useQuery({
         queryKey: ["manager-leagues", idsParam],
         queryFn: async (): Promise<ManagerLeaguesResponse> => {
             const r = await api.get("/v1/managers/leagues/", { params: { ids: idsParam } });
@@ -66,12 +70,23 @@ export default function ManagerLeaguesPage() {
         keepPreviousData: true,
     });
 
+    // ---- Reload mutation (adjust URL to match your backend) ----
+    const reloadMut = useMutation({
+        mutationFn: async (league_id: number) => {
+            const managerId = data?.results?.[0]?.information?.id;
+            // list-level POST to /v1/reload-league/
+            return api.post(`/v1/reload-league/${league_id}/`, {
+                manager_id: managerId,
+            });
+        },
+        onSuccess: () => refetch(),
+    });
+
+
     const first = data?.results?.[0];
     const managerName =
-        [first?.information?.formatted_name, '-', first?.information?.name]
-            .filter(Boolean)        // drop undefined/empty
-            .join(" ")              // "formatted_name name"
-        || (hasIds ? `Manager ${idsParam}` : "");
+        [first?.information?.formatted_name, "-", first?.information?.name].filter(Boolean).join(" ") ||
+        (hasIds ? `Manager ${idsParam}` : "");
 
     const leagues = (first?.classic_leagues ?? []).slice();
 
@@ -91,7 +106,11 @@ export default function ManagerLeaguesPage() {
                         />
                     </label>
                     <button type="submit" className="btn">Load</button>
-                    {hasIds && <button type="button" className="btn" onClick={clearIds}>Clear</button>}
+                    {hasIds && (
+                        <button type="button" className="btn" onClick={clearIds}>
+                            Clear
+                        </button>
+                    )}
                 </form>
             </div>
 
@@ -125,17 +144,23 @@ export default function ManagerLeaguesPage() {
                         </tr>
 
                         {!hasIds && (
-                            <tr><td colSpan={5} style={{ padding: 16 }}>
-                                Enter a manager ID above and click “Load”.
-                            </td></tr>
+                            <tr>
+                                <td colSpan={5} style={{ padding: 16 }}>
+                                    Enter a manager ID above and click “Load”.
+                                </td>
+                            </tr>
                         )}
 
                         {hasIds && isLoading && (
-                            <tr><td colSpan={5} style={{ padding: 16 }}>Loading…</td></tr>
+                            <tr>
+                                <td colSpan={5} style={{ padding: 16 }}>Loading…</td>
+                            </tr>
                         )}
 
                         {hasIds && !isLoading && leagues.length === 0 && (
-                            <tr><td colSpan={5} style={{ padding: 16 }}>No leagues found.</td></tr>
+                            <tr>
+                                <td colSpan={5} style={{ padding: 16 }}>No leagues found.</td>
+                            </tr>
                         )}
 
                         {leagues.map((lg) => (
@@ -146,11 +171,24 @@ export default function ManagerLeaguesPage() {
                                         <button type="button" className="btn">Standings</button>
                                         <button type="button" className="btn">Live</button>
                                         <button type="button" className="btn">Progression</button>
-                                        <button type="button" className="btn">Reload data</button>
+                                        <button
+                                            type="button"
+                                            className="btn"
+                                            onClick={() => reloadMut.mutate(lg.league_id)}
+                                            disabled={reloadMut.isPending}
+                                            title="Delete & rebuild standings from finished/data_checked events"
+                                        >
+                                            {reloadMut.isPending ? "Reloading…" : "Reload data"}
+                                        </button>
                                     </div>
                                 </td>
                                 <td className="center">
-                                    <Movement entry_rank={lg.rank ?? null} entry_last_rank={lg.entry_last_rank ?? null} movement={lg.movement ?? null}/>
+                                    {/* FIX: use entry_rank instead of rank */}
+                                    <Movement
+                                        entry_rank={lg.entry_rank ?? null}
+                                        entry_last_rank={lg.entry_last_rank ?? null}
+                                        movement={lg.movement ?? null}
+                                    />
                                 </td>
                                 <td className="num">{lg.entry_rank ?? ""}</td>
                                 <td className="num">{lg.entry_last_rank ?? ""}</td>

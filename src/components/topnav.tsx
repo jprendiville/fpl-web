@@ -1,6 +1,6 @@
 // src/components/topnav.tsx
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import {useEffect, useRef, useState, type CSSProperties} from "react";
+import {NavLink, useLocation} from "react-router-dom";
 import "../styles/topnav.css";
 
 export default function TopNav() {
@@ -10,7 +10,7 @@ export default function TopNav() {
     const playersRef = useRef<HTMLDivElement | null>(null);
     const managersRef = useRef<HTMLDivElement | null>(null);
     const teamsRef = useRef<HTMLDivElement | null>(null);
-    const { pathname } = useLocation();
+    const {pathname} = useLocation();
 
     const playersActive =
         pathname.includes("/players") ||
@@ -31,7 +31,11 @@ export default function TopNav() {
             if (teamsRef.current && !teamsRef.current.contains(e.target as Node)) setTeamsOpen(false);
         };
         const onEsc = (e: KeyboardEvent) => {
-            if (e.key === "Escape") { setPlayersOpen(false); setManagersOpen(False); setTeamsOpen(false); }
+            if (e.key === "Escape") {
+                setPlayersOpen(false);
+                setManagersOpen(False);
+                setTeamsOpen(false);
+            }
         };
         document.addEventListener("click", onDocClick);
         document.addEventListener("keydown", onEsc);
@@ -59,7 +63,11 @@ export default function TopNav() {
         borderBottom: `1px solid ${colors.border}`,
         backdropFilter: "blur(6px)",
     };
-    const wrapStyle: CSSProperties = { maxWidth: "110%", margin: "0 auto", padding: 0 };
+    const wrapStyle: CSSProperties = {
+        maxWidth: "110%",
+        margin: "0 auto",
+        padding: 0
+    };
     const navStyle: CSSProperties = {
         display: "flex",
         alignItems: "center",
@@ -83,7 +91,7 @@ export default function TopNav() {
                         <NavLink
                             to="/home"
                             className="nav-btn"
-                            style={({ isActive }) => ({
+                            style={({isActive}) => ({
                                 ...linkBase,
                                 color: isActive ? colors.onAccent : colors.text,
                                 background: isActive ? colors.accent : "transparent",
@@ -93,7 +101,7 @@ export default function TopNav() {
                         </NavLink>
 
                         {/* Players dropdown */}
-                        <div style={{ position: "relative" }} ref={playersRef}>
+                        <div style={{position: "relative"}} ref={playersRef}>
                             <button
                                 type="button"
                                 className={`nav-btn ${playersOpen || playersActive ? "nav-active" : ""}`}
@@ -102,10 +110,15 @@ export default function TopNav() {
                                 Players
                             </button>
                             {playersOpen && (
-                                <div id="players-menu" role="menu" className="dropdown-menu">
-                                    <DropdownLink to="/players" label="Players" onClick={() => setPlayersOpen(false)} />
-                                    <DropdownLink to="/defence" label="Defence" onClick={() => setPlayersOpen(false)} />
-                                    <DropdownLink to="/transfers" label="Transfers" onClick={() => setPlayersOpen(false)} />
+                                <div id="players-menu" role="menu"
+                                     className="dropdown-menu">
+                                    <DropdownLink to="/players" label="Players"
+                                                  onClick={() => setPlayersOpen(false)}/>
+                                    <DropdownLink to="/defence" label="Defence"
+                                                  onClick={() => setPlayersOpen(false)}/>
+                                    <DropdownLink to="/transfers"
+                                                  label="Transfers"
+                                                  onClick={() => setPlayersOpen(false)}/>
                                 </div>
                             )}
                         </div>
@@ -114,7 +127,7 @@ export default function TopNav() {
                         <NavLink
                             to="/managers"
                             className="nav-btn"
-                            style={({ isActive }) => ({
+                            style={({isActive}) => ({
                                 ...linkBase,
                                 color: isActive ? colors.onAccent : colors.text,
                                 background: isActive ? colors.accent : "transparent",
@@ -124,7 +137,7 @@ export default function TopNav() {
                         </NavLink>
 
                         {/* Teams dropdown */}
-                        <div style={{ position: "relative" }} ref={teamsRef}>
+                        <div style={{position: "relative"}} ref={teamsRef}>
                             <button
                                 type="button"
                                 className={`nav-btn ${teamsOpen || teamsActive ? "nav-active" : ""}`}
@@ -133,9 +146,13 @@ export default function TopNav() {
                                 Teams
                             </button>
                             {teamsOpen && (
-                                <div id="teams-menu" role="menu" className="dropdown-menu">
-                                    <DropdownLink to="/fdr" label="FDR" onClick={() => setTeamsOpen(false)} />
-                                    <DropdownLink to="/league-table" label="League Table" onClick={() => setTeamsOpen(false)} />
+                                <div id="teams-menu" role="menu"
+                                     className="dropdown-menu">
+                                    <DropdownLink to="/fdr" label="FDR"
+                                                  onClick={() => setTeamsOpen(false)}/>
+                                    <DropdownLink to="/league-table"
+                                                  label="League Table"
+                                                  onClick={() => setTeamsOpen(false)}/>
                                 </div>
                             )}
                         </div>
@@ -148,7 +165,7 @@ export default function TopNav() {
 }
 
 function DropdownLink(
-    { to, label, onClick }: { to: string; label: string; onClick?: () => void }
+    {to, label, onClick}: { to: string; label: string; onClick?: () => void }
 ) {
     const itemBase: CSSProperties = {
         display: "block",
