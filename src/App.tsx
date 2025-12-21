@@ -9,6 +9,8 @@ import FdrPage from "./pages/teams/fdr.tsx";
 import LeagueTablePage from "./pages/teams/league-table.tsx";
 import ManagersPage from "./pages/managers/managers.tsx";
 import ManagerLeaguesPage from "./pages/managers/manager-leagues.tsx";
+import ManagerLeagueProgressionPage
+    from "./pages/managers/league-progression.tsx";
 
 export default function App() {
     return (
@@ -24,6 +26,8 @@ export default function App() {
                 <Route path="/manager-leagues" element={<ManagerLeaguesPage />} />
                 <Route path="/fdr" element={<FdrPage />} />
                 <Route path="/league-table" element={<LeagueTablePage />} />
+                <Route path="/league-progression" element={<ManagerLeagueProgressionPage />} />
+                <Route path="/league-progression/:league_id" element={<ManagerLeagueProgressionPage />} />
                 <Route path="*" element={<NotFound />} />
             </Routes>
         </>

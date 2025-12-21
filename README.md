@@ -11,3 +11,10 @@ npm run dev
 
 # Install Axios dependencies
 npm i @tanstack/react-query axios
+
+# Install recharts and framer for the barchart race
+npm i d3
+
+
+
+

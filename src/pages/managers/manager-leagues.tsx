@@ -1,7 +1,7 @@
 // src/pages/manager-leagues.tsx
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 
 import "../../styles/global.css";
@@ -39,6 +39,8 @@ function Movement({ entry_rank, entry_last_rank, movement }: Partial<League>) {
 export default function ManagerLeaguesPage() {
     const [sp, setSp] = useSearchParams();
     const [input, setInput] = useState(sp.get("ids") ?? "");
+    const navigate = useNavigate();
+    const qc = useQueryClient();
 
     useEffect(() => setInput(sp.get("ids") ?? ""), [sp]);
 
@@ -70,11 +72,10 @@ export default function ManagerLeaguesPage() {
         keepPreviousData: true,
     });
 
-    // ---- Reload mutation (adjust URL to match your backend) ----
+    // ---- Reload mutation: POST /api/v1/reload-league/<league_id>/ { manager_id } ----
     const reloadMut = useMutation({
         mutationFn: async (league_id: number) => {
             const managerId = data?.results?.[0]?.information?.id;
-            // list-level POST to /v1/reload-league/
             return api.post(`/v1/reload-league/${league_id}/`, {
                 manager_id: managerId,
             });
@@ -82,11 +83,23 @@ export default function ManagerLeaguesPage() {
         onSuccess: () => refetch(),
     });
 
+    // ---- Navigate to progression page; prefetch API first ----
+    const goProgression = async (league_id: number) => {
+        await qc.prefetchQuery({
+            queryKey: ["league-progression", league_id],
+            queryFn: async () => (await api.get(`/v1/league-progression/${league_id}/`)).data,
+            staleTime: 30_000,
+        });
+
+        navigate(`/league-progression/${encodeURIComponent(String(league_id))}`);
+
+    };
 
     const first = data?.results?.[0];
     const managerName =
-        [first?.information?.formatted_name, "-", first?.information?.name].filter(Boolean).join(" ") ||
-        (hasIds ? `Manager ${idsParam}` : "");
+        [first?.information?.formatted_name, "-", first?.information?.name]
+            .filter(Boolean)
+            .join(" ") || (hasIds ? `Manager ${idsParam}` : "");
 
     const leagues = (first?.classic_leagues ?? []).slice();
 
@@ -170,7 +183,13 @@ export default function ManagerLeaguesPage() {
                                     <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                                         <button type="button" className="btn">Standings</button>
                                         <button type="button" className="btn">Live</button>
-                                        <button type="button" className="btn">Progression</button>
+                                        <button
+                                            type="button"
+                                            className="btn"
+                                            onClick={() => goProgression(lg.league_id)}
+                                        >
+                                            Progression
+                                        </button>
                                         <button
                                             type="button"
                                             className="btn"
@@ -183,7 +202,6 @@ export default function ManagerLeaguesPage() {
                                     </div>
                                 </td>
                                 <td className="center">
-                                    {/* FIX: use entry_rank instead of rank */}
                                     <Movement
                                         entry_rank={lg.entry_rank ?? null}
                                         entry_last_rank={lg.entry_last_rank ?? null}
