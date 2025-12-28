@@ -26,6 +26,9 @@ html, body, #root { max-width: 100%; overflow-x: hidden; }
 
     --page-gutter: 16px;
     --content-tuck: 60px;
+
+    /* NEW: navbar offset */
+    --navbar-height: 60px;
 }
 
 /* Toolbar */
@@ -80,7 +83,7 @@ html, body, #root { max-width: 100%; overflow-x: hidden; }
 
 /* ---- INNER SCROLLER (scrollbars live here) ---- */
 .table-scroll{
-    max-height:70vh;
+    height:70vh; /* FIXED: ensures sticky header works immediately */
     overflow-x:auto;
     overflow-y:auto;
     position:relative;
@@ -192,7 +195,7 @@ tbody td.center{ text-align:center; }
 
 /* Managers-only extra frozen lane (slot/index) */
 .col-slot{
-    min-width: var(--freeze-0); /* remapped under .managers-table */
+    min-width: var(--freeze-0);
     width: var(--freeze-0);
     max-width: var(--freeze-0);
     text-align: center;
@@ -268,17 +271,15 @@ tbody td[class*="freeze-"]{
 }
 
 /* ---------- Managers page: remap frozen lanes & widths ---------- */
-/* On Managers we want: lane-0 = slot/index, lane-1 = Player, lane-2..4 as usual, lane-5 = Pos (type) */
 .table-wrap.managers-table{
-    --freeze-0: 44px;   /* slot/index */
-    --freeze-1: 180px;  /* Player (web_name) */
-    --freeze-2: 70px;   /* History */
-    --freeze-3: 60px;   /* Status */
-    --freeze-4: 60px;   /* Team */
-    --freeze-5: 60px;   /* Pos (type) */
+    --freeze-0: 44px;
+    --freeze-1: 180px;
+    --freeze-2: 70px;
+    --freeze-3: 60px;
+    --freeze-4: 60px;
+    --freeze-5: 60px;
 }
 
-/* Remap the helper classes only within Managers */
 .table-wrap.managers-table .col-slot{
     min-width: var(--freeze-0); width: var(--freeze-0); max-width: var(--freeze-0);
 }
@@ -289,7 +290,6 @@ tbody td[class*="freeze-"]{
     min-width: var(--freeze-5); width: var(--freeze-5); max-width: var(--freeze-5);
 }
 
-/* Make Managers widths match Players/Defence for the early columns */
 .table-wrap.managers-table .col-history{
     min-width: var(--freeze-2); width: var(--freeze-2); max-width: var(--freeze-2);
 }

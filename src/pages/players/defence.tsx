@@ -1,5 +1,5 @@
 // src/pages/players/defence.tsx
-import PlayerTable from "../../components/PlayerTable";
+import PlayerTable from "../../components/playertable";
 import type { ColumnMap } from "../../lib/columns";
 
 const DEFENCE_ONLY = [
@@ -24,7 +24,7 @@ export default function DefencePage() {
     return (
         <PlayerTable
             endpoint="/v1/defence/"
-            title="Defence"
+            title="Defence" // This will render inside PlayerTable's toolbar
             columnsToShow={DEFENCE_ONLY}
             columnOverrides={DEFENCE_PAGE_OVERRIDES}
         />
