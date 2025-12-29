@@ -116,8 +116,7 @@ export default function TopNav() {
                                                   onClick={() => setPlayersOpen(false)}/>
                                     <DropdownLink to="/defence" label="Defence"
                                                   onClick={() => setPlayersOpen(false)}/>
-                                    <DropdownLink to="/transfers"
-                                                  label="Transfers"
+                                    <DropdownLink to="/transfers" label="Transfers"
                                                   onClick={() => setPlayersOpen(false)}/>
                                 </div>
                             )}

@@ -299,3 +299,14 @@ tbody td[class*="freeze-"]{
 .table-wrap.managers-table .col-team{
     min-width: var(--freeze-4); width: var(--freeze-4); max-width: var(--freeze-4);
 }
+
+.transfers-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    padding: 1rem 2rem;
+}
+
+.transfers-column {
+    min-width: 0;
+}
