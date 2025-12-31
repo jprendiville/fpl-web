@@ -15,7 +15,8 @@ export default function TopNav() {
     const playersActive =
         pathname.includes("/players") ||
         pathname.includes("/defence") ||
-        pathname.includes("/transfers");
+        pathname.includes("/transfers") ||
+        pathname.includes("/predictions");
 
     const managersActive =
         pathname.includes("/managers");
@@ -117,6 +118,8 @@ export default function TopNav() {
                                     <DropdownLink to="/defence" label="Defence"
                                                   onClick={() => setPlayersOpen(false)}/>
                                     <DropdownLink to="/transfers" label="Transfers"
+                                                  onClick={() => setPlayersOpen(false)}/>
+                                    <DropdownLink to="/predictions" label="Predictions"
                                                   onClick={() => setPlayersOpen(false)}/>
                                 </div>
                             )}

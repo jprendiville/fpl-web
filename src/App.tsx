@@ -11,6 +11,7 @@ import ManagersPage from "./pages/managers/managers.tsx";
 import ManagerLeaguesPage from "./pages/managers/manager-leagues.tsx";
 import ManagerLeagueProgressionPage
     from "./pages/managers/league-progression.tsx";
+import PredictionsPage from "./pages/players/predictions.tsx";
 
 export default function App() {
     return (
@@ -22,6 +23,7 @@ export default function App() {
                 <Route path="/players" element={<PlayersPage />} />
                 <Route path="/defence" element={<DefencePage />} />
                 <Route path="/transfers" element={<TransfersPage />} />
+                <Route path="/predictions" element={<PredictionsPage />} />
                 <Route path="/managers" element={<ManagersPage />} />
                 <Route path="/manager-leagues" element={<ManagerLeaguesPage />} />
                 <Route path="/fdr" element={<FdrPage />} />

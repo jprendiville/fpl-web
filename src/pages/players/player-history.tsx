@@ -40,6 +40,7 @@ type Props = {
 };
 
 export default function PlayerHistoryModal({ open, onClose, playerId, summary }: Props) {
+
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ["player-history", playerId],
         enabled: open && !!playerId,
@@ -51,12 +52,8 @@ export default function PlayerHistoryModal({ open, onClose, playerId, summary }:
 
     const title = useMemo(() => {
         const name = summary?.name ?? "Player";
-        const team = summary?.team?.name || summary?.team?.short_name || "";
-        const pos =
-            summary?.type?.singular_name_short ||
-            summary?.type?.singular_name ||
-            summary?.type?.name ||
-            "";
+        const team = summary?.team || "";
+        const pos = summary?.type || "";
         return `${name}${team ? ` (${team})` : ""}${pos ? ` - ${pos}` : ""}`;
     }, [summary]);
 
@@ -88,7 +85,14 @@ export default function PlayerHistoryModal({ open, onClose, playerId, summary }:
             <div className="table-wrap">
                 <div className="table-scroll">
                     <table className="data">
-                        <thead>
+                        <thead
+                            style={{
+                                position: "sticky",
+                                top: 0,
+                                background: "var(--table-header,#f8fafc)",
+                                zIndex: 1
+                            }}
+                        >
                         <tr>
                             <th>Round</th>
                             <th>Date</th>
@@ -101,19 +105,24 @@ export default function PlayerHistoryModal({ open, onClose, playerId, summary }:
                             <th>Clean Sheets</th>
                             <th>Bonus</th>
                         </tr>
-                        </thead>
-                        <tbody>
-                        {/* totals row */}
-                        <tr style={{ fontWeight: 600, background: "var(--table-header,#f8fafc)" }}>
-                            <td colSpan={4}>Totals</td>
-                            <td className="num">{totals.minutes}</td>
-                            <td className="num">{totals.points}</td>
-                            <td className="num">{totals.goals}</td>
-                            <td className="num">{totals.assists}</td>
-                            <td className="num">{totals.clean_sheets}</td>
-                            <td className="num">{totals.bonus}</td>
 
+                        {/* Totals row — same number of columns, no colSpan */}
+                        <tr style={{ fontWeight: 600 }}>
+                            <th style={{ textAlign: "left" }}>Totals</th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th className="num">{totals.points}</th>
+                            <th className="num">{totals.goals}</th>
+                            <th className="num">{totals.assists}</th>
+                            <th className="num">{totals.clean_sheets}</th>
+                            <th className="num">{totals.bonus}</th>
                         </tr>
+                        </thead>
+
+                        <tbody>
+
 
                         {(data ?? []).map((r) => {
                             const date = r.kickoff_time ? new Date(r.kickoff_time) : null;

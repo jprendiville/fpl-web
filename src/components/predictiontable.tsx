@@ -1,4 +1,4 @@
-// src/components/playertable.tsx
+// src/components/predictiontable.tsx
 import type React from "react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -17,26 +17,26 @@ import { FREEZE_KEYS, COL_WIDTH_CLASS } from "../features/players/player-utils";
 import { usePlayerParams } from "../features/players/player-params";
 import PaginationBar from "./paginationbar";
 import { normalizeToPage, getFdrColors } from "../features/teams/team-utils";
-import PlayerHistoryModal from "../pages/players/player-history";
+import PredictionHistoryModal from "../pages/players/prediction-history";
 
 type AnyRow = Record<string, unknown>;
 type DRFPage<T> = { count: number; next: string | null; previous: string | null; results: T[] };
 
 const FDR_COLORS = getFdrColors();
 
-interface PlayerTableProps {
+interface PredictionsTableProps {
     endpoint: string;
     title: string;
     columnsToShow: string[];
     columnOverrides?: ColumnMap;
 }
 
-export default function PlayerTable({
-                                        endpoint,
-                                        title,
-                                        columnsToShow,
-                                        columnOverrides = {},
-                                    }: PlayerTableProps) {
+export default function PredictionsTable({
+                                             endpoint,
+                                             title,
+                                             columnsToShow,
+                                             columnOverrides = {},
+                                         }: PredictionsTableProps) {
     const {
         page,
         fType,
@@ -51,9 +51,9 @@ export default function PlayerTable({
         clearFilters,
     } = usePlayerParams();
 
-    // ---- Data: players list ----
+    // ---- Fetch predictions ----
     const { data, isLoading } = useQuery({
-        queryKey: ["players", endpoint, page, fType, fTeam, fStatus, fMaxPriceUi],
+        queryKey: ["predictions", endpoint, page, fType, fTeam, fStatus, fMaxPriceUi],
         queryFn: async (): Promise<DRFPage<AnyRow>> => {
             const resp = await api.get(endpoint, {
                 params: {
@@ -69,9 +69,45 @@ export default function PlayerTable({
         keepPreviousData: true,
     });
 
-    const rows = data?.results ?? [];
+    // ---- Fetch events (same as PlayerTable) ----
+    const { data: events } = useQuery({
+        queryKey: ["upcoming-events"],
+        queryFn: async () => {
+            const r = await api.get("/v1/events/upcoming/");
+            return r.data;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
 
-    // Build columns strictly from whitelist
+    // ---- Flatten predictions into player-like rows ----
+    const rows = useMemo(() => {
+        if (!data?.results) return [];
+
+        return data.results.map((p: any) => {
+            const pl = p.player;
+
+            return {
+                // prediction-specific
+                prediction: Number(p.prediction),
+                gameweek_id: p.gameweek_id,
+
+                // flatten all player fields
+                ...pl,
+
+                // aliases to match PlayerTable
+                team: pl.team,
+                type: pl.type,
+
+                // next games
+                next_games: pl.next_games ?? [],
+
+                // enable history button
+                history: true,
+            };
+        });
+    }, [data]);
+
+    // ---- Build columns ----
     const { columns } = buildColumnsOnly(
         rows,
         columnsToShow,
@@ -79,17 +115,7 @@ export default function PlayerTable({
         { keepMissing: true }
     );
 
-    // ---- Data: upcoming events (for headers) ----
-    const { data: events } = useQuery({
-        queryKey: ["upcoming-events"],
-        queryFn: async (): Promise<any[]> => {
-            const r = await api.get("/v1/events/upcoming/");
-            return r.data;
-        },
-        staleTime: 5 * 60 * 1000,
-    });
-
-    // ---- Options: fetch all Teams (unpaginated) ----
+    // ---- Fetch teams ----
     const { data: teamsApi } = useQuery({
         queryKey: ["teams-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
@@ -99,26 +125,15 @@ export default function PlayerTable({
         staleTime: 5 * 60 * 1000,
     });
 
-    // Team filter options
     const teamOptions = useMemo(() => {
         const list = teamsApi?.results ?? [];
-        if (list.length) {
-            return list.map((t: any) => ({
-                id: t.id,
-                label: t.short_name || t.name || String(t.id),
-            }));
-        }
-        // fallback from rows
-        const seen = new Map<number, string>();
-        rows.forEach((r: AnyRow) => {
-            const t = r["team"] as any;
-            if (t && typeof t.id === "number")
-                seen.set(t.id, t.short_name || t.name || String(t.id));
-        });
-        return Array.from(seen, ([id, label]) => ({ id, label }));
-    }, [teamsApi, rows]);
+        return list.map((t: any) => ({
+            id: t.id,
+            label: t.short_name || t.name || String(t.id),
+        }));
+    }, [teamsApi]);
 
-    // ---- Options: fetch all Element Types (unpaginated) ----
+    // ---- Fetch element types ----
     const { data: typesApi } = useQuery({
         queryKey: ["types-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
@@ -130,53 +145,34 @@ export default function PlayerTable({
 
     const typeOptions = useMemo(() => {
         const list = typesApi?.results ?? [];
-        if (list.length) {
-            return list.map((t: any) => ({
-                id: t.id,
-                label: t.singular_name_short || t.singular_name || t.name || String(t.id),
-            }));
-        }
-        // fallback from rows
-        const seen = new Map<number, string>();
-        rows.forEach((r: AnyRow) => {
-            const t = r["type"] as any;
-            if (t && typeof t.id === "number")
-                seen.set(t.id, t.singular_name_short || t.singular_name || String(t.id));
-        });
-        return Array.from(seen, ([id, label]) => ({ id, label }));
-    }, [typesApi, rows]);
+        return list.map((t: any) => ({
+            id: t.id,
+            label: t.singular_name_short || t.singular_name || t.name || String(t.id),
+        }));
+    }, [typesApi]);
 
-    // Derive page size from next/prev if present; fallback 20
-    const pageSize = (() => {
-        const fallback = 20;
-        try {
-            const url = new URL(data?.next || data?.previous || "", location.origin);
-            const p = url.searchParams.get("page_size") || url.searchParams.get("limit");
-            return p ? Number(p) : fallback;
-        } catch {
-            return fallback;
-        }
-    })();
-
+    // ---- Pagination ----
+    const pageSize = 20;
     const totalPages =
         data?.count ? Math.max(1, Math.ceil(data.count / pageSize)) : undefined;
+
     const canGoPrev = page > 1 && !isLoading;
     const canGoNext =
         !isLoading && (typeof totalPages === "number" ? page < totalPages : !!data?.next);
     const canGoFirst = canGoPrev;
     const canGoLast = typeof totalPages === "number" && page < totalPages && !isLoading;
 
-    // ---- Player history modal state ----
+    // ---- History modal ----
     const [hist, setHist] = useState<{ id: number; summary: any } | null>(null);
 
     function openHistory(row: AnyRow) {
-        const teamObj = row["team"] as any;
-        const typeObj = row["type"] as any;
+        const teamObj = row["team"];
+        const typeObj = row["type"];
 
         setHist({
             id: Number(row["id"]),
             summary: {
-                name: (row["web_name"] as string) || "",
+                name: row["web_name"] || "",
                 team: teamObj?.short_name || teamObj?.name || "",
                 type: typeObj?.singular_name_short || typeObj?.singular_name || "",
                 now_cost: row["now_cost"],
@@ -190,8 +186,8 @@ export default function PlayerTable({
 
     return (
         <main className="mx-auto max-w-6xl px-4 page--compact">
-            {/* Toolbar: title + filters in one line */}
-            <div className="page-toolbar" role="region" aria-label="Players filters">
+            {/* ---- Toolbar ---- */}
+            <div className="page-toolbar">
                 <h1 className="page-title">{title}</h1>
 
                 <div className="filters-row">
@@ -246,7 +242,7 @@ export default function PlayerTable({
                         </select>
                     </label>
 
-                    {/* Max price (m) */}
+                    {/* Max price */}
                     <label>
                         <span style={{ fontSize: 12, color: "#374151" }}>Max price (m)</span>
                         <input
@@ -262,7 +258,6 @@ export default function PlayerTable({
                         />
                     </label>
 
-                    {/* Clear */}
                     <button onClick={clearFilters} style={btnStyle}>
                         Clear filters
                     </button>
@@ -273,7 +268,6 @@ export default function PlayerTable({
             <div className="table-wrap">
                 <div className="table-scroll">
                     <table className="data">
-                        {/* keep a semantic thead for screen readers only */}
                         <thead className="sr-only-thead">
                         <tr>
                             {columns.map((c) => (
@@ -283,15 +277,18 @@ export default function PlayerTable({
                         </thead>
 
                         <tbody>
-                        {/* FAKE sticky header that behaves like body cells */}
+                        {/* Sticky header */}
                         <tr className="fake-header">
                             {columns.map((c) => {
                                 const cfg = configFor(c, columnOverrides);
                                 const align = cfg.align ?? autoAlign(rows[0]?.[c]);
                                 const alignCls =
-                                    align === "right" ? "num" : align === "center" ? "center" : "";
+                                    align === "right"
+                                        ? "num"
+                                        : align === "center"
+                                            ? "center"
+                                            : "";
 
-                                // sticky + width classes
                                 const i = FREEZE_KEYS.indexOf(c as any);
                                 const freeze = i >= 0 ? `freeze-${i}` : "";
                                 const widthCls = COL_WIDTH_CLASS[c] || "";
@@ -299,36 +296,22 @@ export default function PlayerTable({
                                 return (
                                     <td
                                         key={c}
-                                        className={["fake-th", alignCls, freeze, widthCls].join(" ").trim()}
+                                        className={["fake-th", alignCls, freeze, widthCls].join(" ")}
                                     >
                                         {headerLabel(c, columnOverrides)}
                                     </td>
                                 );
                             })}
 
-                            {/* Add dynamic event headers */}
-                            {events?.map((ev) => {
-                                const d = new Date(ev.deadline_time);
-                                const day = d.getDate();
-                                const month = d.toLocaleString("en-GB", { month: "short" });
-                                const time = d.toLocaleTimeString("en-GB", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: false,
-                                });
-
-                                return (
-                                    <td key={`ev-${ev.id}`} className="fake-th center">
-                                        <div>{`Gameweek ${ev.id}`}</div>
-                                        <div className="fake-th center">
-                                            {day} {month} {time}
-                                        </div>
-                                    </td>
-                                );
-                            })}
+                            {/* Event headers */}
+                            {events?.map((ev: any) => (
+                                <td key={`ev-${ev.id}`} className="fake-th center">
+                                    <div>GW {ev.id}</div>
+                                </td>
+                            ))}
                         </tr>
 
-                        {/* DATA ROWS */}
+                        {/* Data rows */}
                         {rows.map((row, idx) => (
                             <tr key={idx}>
                                 {columns.map((c) => {
@@ -336,23 +319,29 @@ export default function PlayerTable({
                                     const v = (row as AnyRow)[c];
                                     const align = cfg.align ?? autoAlign(v);
                                     const alignCls =
-                                        align === "right" ? "num" : align === "center" ? "center" : "";
+                                        align === "right"
+                                            ? "num"
+                                            : align === "center"
+                                                ? "center"
+                                                : "";
                                     const rendered = cfg.format ? cfg.format(v) : formatCell(v);
 
-                                    // sticky & width classes
                                     const i = FREEZE_KEYS.indexOf(c as any);
                                     const freeze = i >= 0 ? `freeze-${i}` : "";
                                     const widthCls = COL_WIDTH_CLASS[c] || "";
 
-                                    // eye button for history
+                                    // History button
                                     if (c === "history") {
                                         return (
-                                            <td key={c} className={[alignCls, freeze, widthCls].join(" ").trim()}>
+                                            <td
+                                                key={c}
+                                                className={[alignCls, freeze, widthCls].join(" ")}
+                                            >
                                                 <button
                                                     type="button"
                                                     onClick={() => openHistory(row)}
                                                     title="View history"
-                                                    aria-label={`View history for ${(row["web_name"] as string) || "player"}`}
+                                                    aria-label={`View history for ${row["web_name"]}`}
                                                     style={eyeBtnStyle}
                                                 >
                                                     👁
@@ -361,24 +350,29 @@ export default function PlayerTable({
                                         );
                                     }
 
-
                                     return (
-                                        <td key={c} className={[alignCls, freeze, widthCls].join(" ").trim()}>
+                                        <td
+                                            key={c}
+                                            className={[alignCls, freeze, widthCls].join(" ")}
+                                        >
                                             {rendered}
                                         </td>
                                     );
                                 })}
-                                {/* Add next_games cells */}
-                                {events?.map((ev) => {
-                                    const nextGames: any[] = (row as AnyRow)["next_games"] ?? [];
-                                    const ng = nextGames.find((g) => g.event === ev.id);
-                                    const opp = ng?.opponents;
 
-                                    const bg = opp ? FDR_COLORS[opp.color as number] || "transparent" : "transparent";
+                                {/* next_games cells */}
+                                {events?.map((ev: any) => {
+                                    const ng = row.next_games?.find(
+                                        (g: any) => g.event === ev.id
+                                    );
+                                    const opp = ng?.opponents;
+                                    const bg = opp
+                                        ? FDR_COLORS[opp.color] || "transparent"
+                                        : "transparent";
 
                                     return (
                                         <td
-                                            key={`ng-${row["id"]}-${ev.id}`}
+                                            key={`ng-${row.id}-${ev.id}`}
                                             className="center"
                                             style={{ backgroundColor: bg }}
                                         >
@@ -391,7 +385,10 @@ export default function PlayerTable({
 
                         {!rows.length && (
                             <tr>
-                                <td colSpan={columns.length + (events?.length || 0)} style={{ padding: 16 }}>
+                                <td
+                                    colSpan={columns.length + (events?.length || 0)}
+                                    style={{ padding: 16 }}
+                                >
                                     No results
                                 </td>
                             </tr>
@@ -415,8 +412,8 @@ export default function PlayerTable({
                 onLast={() => goLast(totalPages)}
             />
 
-            {/* ---- Player History Modal ---- */}
-            <PlayerHistoryModal
+            {/* ---- History Modal ---- */}
+            <PredictionHistoryModal
                 open={!!hist}
                 onClose={() => setHist(null)}
                 playerId={hist?.id ?? 0}
@@ -426,7 +423,7 @@ export default function PlayerTable({
     );
 }
 
-/* ---------- helpers & local styles ---------- */
+/* ---------- styles ---------- */
 const selectStyle: React.CSSProperties = {
     border: "1px solid var(--border)",
     borderRadius: 12,

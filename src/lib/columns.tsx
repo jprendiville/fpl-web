@@ -100,6 +100,7 @@ export const BASE_COLUMN_MAP: ColumnMap = {
     form: { label: "Form", align: "right", format: (v) => formatNumber(v, 2) },
     bonus:  { label: "Bonus", align: "right"},
     ep_next:  { label: "Expected Points", align: "right"},
+    prediction:  { label: "Prediction", align: "right"},
     value_form: { label: "Value Form", align: "right", format: (v) => formatNumber(v, 2) },
     vapm: { label: "VAPM", align: "right", format: (v) => formatNumber(v, 2) },
 

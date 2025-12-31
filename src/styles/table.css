@@ -159,6 +159,15 @@ table.data tbody td{
     color: var(--text);
 }
 
+table.data thead th {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    white-space: nowrap;
+    background: var(--table-header, #f8fafc);
+    color: var(--text);
+    text-align: left;
+}
+
 /* Zebra */
 table.data tbody tr:nth-child(even){ background: var(--row-alt); }
 
@@ -203,7 +212,17 @@ tbody td.center{ text-align:center; }
 }
 
 /* make all table cells box-sized so widths are stable */
-table.data td, .fake-header td { box-sizing: border-box; }
+table.data th, table.data td, .fake-header td { box-sizing: border-box; }
+
+table.data thead th.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+table.data thead th.center {
+    text-align: center;
+}
+
 
 /* left offsets (work for header row and body rows) */
 .fake-header td.freeze-0, tbody td.freeze-0 { position: sticky; left: 0; }
