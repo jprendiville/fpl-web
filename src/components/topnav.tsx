@@ -1,4 +1,3 @@
-// src/components/topnav.tsx
 import {useEffect, useRef, useState, type CSSProperties} from "react";
 import {NavLink, useLocation} from "react-router-dom";
 import "../styles/topnav.css";
@@ -7,9 +6,13 @@ export default function TopNav() {
     const [playersOpen, setPlayersOpen] = useState(false);
     const [managersOpen, setManagersOpen] = useState(false);
     const [teamsOpen, setTeamsOpen] = useState(false);
+    const [settingsOpen, setSettingsOpen] = useState(false);   // NEW
+
     const playersRef = useRef<HTMLDivElement | null>(null);
     const managersRef = useRef<HTMLDivElement | null>(null);
     const teamsRef = useRef<HTMLDivElement | null>(null);
+    const settingsRef = useRef<HTMLDivElement | null>(null);   // NEW
+
     const {pathname} = useLocation();
 
     const playersActive =
@@ -18,24 +21,28 @@ export default function TopNav() {
         pathname.includes("/transfers") ||
         pathname.includes("/predictions");
 
-    const managersActive =
-        pathname.includes("/managers");
+    const managersActive = pathname.includes("/managers");
 
     const teamsActive =
         pathname.includes("/fdr") ||
         pathname.includes("/league-table");
+
+    // NEW: settings is never "active" because it doesn't navigate
+    const settingsActive = false;
 
     useEffect(() => {
         const onDocClick = (e: MouseEvent) => {
             if (playersRef.current && !playersRef.current.contains(e.target as Node)) setPlayersOpen(false);
             if (managersRef.current && !managersRef.current.contains(e.target as Node)) setManagersOpen(false);
             if (teamsRef.current && !teamsRef.current.contains(e.target as Node)) setTeamsOpen(false);
+            if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setSettingsOpen(false); // NEW
         };
         const onEsc = (e: KeyboardEvent) => {
             if (e.key === "Escape") {
                 setPlayersOpen(false);
-                setManagersOpen(False);
+                setManagersOpen(false);
                 setTeamsOpen(false);
+                setSettingsOpen(false); // NEW
             }
         };
         document.addEventListener("click", onDocClick);
@@ -84,11 +91,27 @@ export default function TopNav() {
         textDecoration: "none",
     };
 
+    // ---- NEW: placeholder actions ----
+    function reloadData() {
+        console.log("Reload data triggered");
+    }
+    function recalcPredictions() {
+        console.log("Recalculate predictions triggered");
+    }
+    function refreshFixtures() {
+        console.log("Refresh fixtures triggered");
+    }
+    function clearCache() {
+        console.log("Clear cache triggered");
+    }
+
     return (
         <>
             <header className="app-nav" style={headerStyle}>
                 <div className="app-nav__wrap" style={wrapStyle}>
                     <nav className="app-nav__bar" style={navStyle}>
+
+                        {/* Home */}
                         <NavLink
                             to="/home"
                             className="nav-btn"
@@ -111,16 +134,11 @@ export default function TopNav() {
                                 Players
                             </button>
                             {playersOpen && (
-                                <div id="players-menu" role="menu"
-                                     className="dropdown-menu">
-                                    <DropdownLink to="/players" label="Players"
-                                                  onClick={() => setPlayersOpen(false)}/>
-                                    <DropdownLink to="/defence" label="Defence"
-                                                  onClick={() => setPlayersOpen(false)}/>
-                                    <DropdownLink to="/transfers" label="Transfers"
-                                                  onClick={() => setPlayersOpen(false)}/>
-                                    <DropdownLink to="/predictions" label="Predictions"
-                                                  onClick={() => setPlayersOpen(false)}/>
+                                <div id="players-menu" role="menu" className="dropdown-menu">
+                                    <DropdownLink to="/players" label="Players" onClick={() => setPlayersOpen(false)}/>
+                                    <DropdownLink to="/defence" label="Defence" onClick={() => setPlayersOpen(false)}/>
+                                    <DropdownLink to="/transfers" label="Transfers" onClick={() => setPlayersOpen(false)}/>
+                                    <DropdownLink to="/predictions" label="Predictions" onClick={() => setPlayersOpen(false)}/>
                                 </div>
                             )}
                         </div>
@@ -148,36 +166,34 @@ export default function TopNav() {
                                 Teams
                             </button>
                             {teamsOpen && (
-                                <div id="teams-menu" role="menu"
-                                     className="dropdown-menu">
-                                    <DropdownLink to="/fdr" label="FDR"
-                                                  onClick={() => setTeamsOpen(false)}/>
-                                    <DropdownLink to="/league-table"
-                                                  label="League Table"
-                                                  onClick={() => setTeamsOpen(false)}/>
+                                <div id="teams-menu" role="menu" className="dropdown-menu">
+                                    <DropdownLink to="/fdr" label="FDR" onClick={() => setTeamsOpen(false)}/>
+                                    <DropdownLink to="/league-table" label="League Table" onClick={() => setTeamsOpen(false)}/>
                                 </div>
                             )}
                         </div>
+
+                        {/* ⭐ NEW: Settings dropdown */}
+                        <div style={{position: "relative"}} ref={settingsRef}>
+                            <button
+                                type="button"
+                                className={`nav-btn ${settingsOpen || settingsActive ? "nav-active" : ""}`}
+                                onClick={() => setSettingsOpen(v => !v)}
+                            >
+                                Settings
+                            </button>
+
+
+                        </div>
+
                     </nav>
                 </div>
             </header>
-
         </>
     );
 }
 
-function DropdownLink(
-    {to, label, onClick}: { to: string; label: string; onClick?: () => void }
-) {
-    const itemBase: CSSProperties = {
-        display: "block",
-        width: "100%",
-        padding: "10px 12px",
-        fontSize: 14,
-        textAlign: "left",
-        textDecoration: "none",
-        color: "var(--text, #374151)",
-    };
+function DropdownLink({to, label, onClick}: { to: string; label: string; onClick?: () => void }) {
     return (
         <NavLink
             to={to}
