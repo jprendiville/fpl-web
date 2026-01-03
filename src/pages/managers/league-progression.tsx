@@ -74,9 +74,13 @@ export default function LeagueProgressionPage() {
         const barG = g.append("g");
 
         const gwLabel = svg.append("text")
-            .attr("text-anchor", "end").attr("x", width - 20).attr("y", height - 20)
-            .attr("font-size", "100px").attr("font-weight", "900")
-            .attr("fill", textColor).attr("opacity", 0.05);
+            .attr("text-anchor", "end")
+            .attr("x", width - 20)
+            .attr("y", height - 20)
+            .attr("font-size", "66px")
+            .attr("font-weight", "900")
+            .attr("fill", textColor)
+            .attr("opacity", 0.15);
 
         const x = d3.scaleLinear().range([0, chartWidth]);
         const y = d3.scaleBand().domain(d3.range(apiCount).map(String)).range([0, apiCount * BAR_HEIGHT]).padding(0.15);
@@ -104,7 +108,7 @@ export default function LeagueProgressionPage() {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `${leagueName}_Final_Race.webm`;
+                a.download = `${leagueName}.webm`;
                 a.click();
                 setIsRecording(false);
             };
@@ -129,23 +133,28 @@ export default function LeagueProgressionPage() {
 
         function update() {
             if (isStopped || gwIdx >= frames.length) {
-                if (mediaRecorder?.state === "recording") setTimeout(() => mediaRecorder.stop(), 2000);
+
+                if (mediaRecorder?.state === "recording") {
+
+                    const endTime = Date.now() + 3000; // 3 second hold
+
+                    const hold = d3.timer(() => {
+                        syncFrame(); // force a frame into the video
+
+                        if (Date.now() >= endTime) {
+                            hold.stop();
+                            mediaRecorder.stop(); // triggers download
+                        }
+                    });
+                }
+
                 return;
             }
 
+
             // --- DRAMATIC SLOWDOWN LOGIC ---
-            const totalFrames = frames.length;
-            const remaining = totalFrames - gwIdx;
             let currentDuration = STEP_DURATION;
             let currentEase = d3.easeLinear;
-
-            if (remaining <= 3) {
-                // Gradually increase duration for the last 3 weeks
-                // Week -3: 1.5s, Week -2: 2.2s, Week -1: 3.5s
-                const slowdownFactor = remaining === 3 ? 1.1 : remaining === 2 ? 1.2 : 1.5;
-                currentDuration = STEP_DURATION * slowdownFactor;
-                currentEase = d3.easeCubicInOut; // Smoother finish
-            }
 
             const frame = frames[gwIdx];
             const sortedData = [...frame.standings].sort((a, b) => b.total - a.total).map((d, i) => ({ ...d, currentRank: i }));
