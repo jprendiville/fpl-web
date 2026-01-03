@@ -1,5 +1,6 @@
+// src/components/transfertable.tsx
 import type React from "react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import {
@@ -10,13 +11,12 @@ import {
     autoAlign,
     formatCell,
 } from "../lib/columns";
-
 import "../styles/global.css";
 import "../styles/table.css";
-
 import { COL_WIDTH_CLASS } from "../features/players/player-utils";
 import { useTransferParams } from "../features/players/transfer-params";
 import PaginationBar from "./paginationbar";
+import { normalizeToPage } from "../features/teams/team-utils";
 import PlayerHistoryModal from "../pages/players/player-history";
 
 type AnyRow = Record<string, unknown>;
@@ -59,7 +59,7 @@ export default function TransfersTable({ endpoint, title, transferField }: Trans
         clearFilters,
     } = useTransferParams(title === "Transfers In" ? "in" : "out");
 
-    // ---- Fetch data ----
+    // ---- Fetch transfers ----
     const { data, isLoading } = useQuery({
         queryKey: ["transfers", endpoint, page, fType, fTeam, fStatus, fMaxPriceUi],
         queryFn: async (): Promise<DRFPage<AnyRow>> => {
@@ -85,6 +85,48 @@ export default function TransfersTable({ endpoint, title, transferField }: Trans
     const { columns } = buildColumnsOnly(rows, TRANSFER_COLUMNS, TRANSFER_OVERRIDES, {
         keepMissing: true,
     });
+
+    // ---- Fetch Teams (dynamic) ----
+    const { data: teamsApi } = useQuery({
+        queryKey: ["teams-options"],
+        queryFn: async (): Promise<DRFPage<any>> => {
+            const r = await api.get("/v1/teams/");
+            return normalizeToPage(r.data);
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const teamOptions = useMemo(() => {
+        const list = teamsApi?.results ?? [];
+        if (list.length) {
+            return list.map((t: any) => ({
+                id: t.id,
+                label: t.short_name || t.name || String(t.id),
+            }));
+        }
+        return [];
+    }, [teamsApi]);
+
+    // ---- Fetch Element Types (dynamic) ----
+    const { data: typesApi } = useQuery({
+        queryKey: ["types-options"],
+        queryFn: async (): Promise<DRFPage<any>> => {
+            const r = await api.get("/v1/element-types/");
+            return r.data;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const typeOptions = useMemo(() => {
+        const list = typesApi?.results ?? [];
+        if (list.length) {
+            return list.map((t: any) => ({
+                id: t.id,
+                label: t.singular_name_short || t.singular_name || t.name || String(t.id),
+            }));
+        }
+        return [];
+    }, [typesApi]);
 
     // ---- Pagination ----
     const pageSize = 20;
@@ -128,23 +170,29 @@ export default function TransfersTable({ endpoint, title, transferField }: Trans
                             style={selectStyle}
                         >
                             <option value="">All</option>
-                            <option value="1">GK</option>
-                            <option value="2">DEF</option>
-                            <option value="3">MID</option>
-                            <option value="4">FWD</option>
+                            {typeOptions.map((o) => (
+                                <option key={o.id} value={o.id}>
+                                    {o.label}
+                                </option>
+                            ))}
                         </select>
                     </label>
 
                     {/* Team */}
                     <label>
                         <span style={{ fontSize: 12, color: "#374151" }}>Team</span>
-                        <input
-                            type="text"
+                        <select
                             value={fTeam}
                             onChange={(e) => setParam("player_team", e.target.value || undefined)}
-                            style={inputStyle}
-                            placeholder="Team ID"
-                        />
+                            style={selectStyle}
+                        >
+                            <option value="">All</option>
+                            {teamOptions.map((o) => (
+                                <option key={o.id} value={o.id}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </select>
                     </label>
 
                     {/* Status */}
