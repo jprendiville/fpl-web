@@ -73,7 +73,7 @@ export default function PredictionsTable({
     const { data: events } = useQuery({
         queryKey: ["upcoming-events"],
         queryFn: async () => {
-            const r = await api.get("/v1/events/upcoming/");
+            const r = await api.get("/events/upcoming/");
             return r.data;
         },
         staleTime: 5 * 60 * 1000,
@@ -107,11 +107,62 @@ export default function PredictionsTable({
         });
     }, [data]);
 
+    // ---- Options: fetch all Player Statuses ----
+    const { data: statusApi } = useQuery({
+        queryKey: ["player-status-options"],
+        queryFn: async () => {
+            const r = await api.get("/settings/player-status/");
+            return r.data;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const statusOptions = useMemo(() => {
+        if (!statusApi) return [];
+        return statusApi.map((s: any) => ({
+            id: s.status,
+            label: s.description || s.status.toUpperCase(),
+            colour: s.colour,
+        }));
+    }, [statusApi]);
+
+    // ---- Add status column override ----
+    const mergedOverrides: ColumnMap = {
+        ...columnOverrides,
+        status: {
+            label: "Status",
+            format: (value: any, row: AnyRow) => {
+                const colour = row.status?.colour || "#999";
+                const description = row.status?.description || "";
+
+                return (
+                    <div
+                        style={{
+                            display: "grid",
+                            placeItems: "center",   // ← perfect centring
+                        }}
+                        title={description}
+                    >
+                        <div
+                            style={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: "50%",
+                                backgroundColor: colour,
+                                border: "1px solid #666",
+                            }}
+                        />
+                    </div>
+                );
+            },
+        },
+    };
+
     // ---- Build columns ----
     const { columns } = buildColumnsOnly(
         rows,
         columnsToShow,
-        columnOverrides,
+        mergedOverrides,
         { keepMissing: true }
     );
 
@@ -119,7 +170,7 @@ export default function PredictionsTable({
     const { data: teamsApi } = useQuery({
         queryKey: ["teams-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
-            const r = await api.get("/v1/teams/");
+            const r = await api.get("/teams/");
             return normalizeToPage(r.data);
         },
         staleTime: 5 * 60 * 1000,
@@ -137,7 +188,7 @@ export default function PredictionsTable({
     const { data: typesApi } = useQuery({
         queryKey: ["types-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
-            const r = await api.get("/v1/element-types/");
+            const r = await api.get("/element-types/");
             return r.data;
         },
         staleTime: 5 * 60 * 1000,
@@ -234,11 +285,11 @@ export default function PredictionsTable({
                             style={selectStyle}
                         >
                             <option value="">All</option>
-                            <option value="a">Available</option>
-                            <option value="d">Doubtful</option>
-                            <option value="i">Injured</option>
-                            <option value="s">Suspended</option>
-                            <option value="u">Unavailable</option>
+                            {statusOptions.map((o) => (
+                                <option key={o.id} value={o.id}>
+                                    {o.label}
+                                </option>
+                            ))}
                         </select>
                     </label>
 
@@ -271,7 +322,7 @@ export default function PredictionsTable({
                         <thead className="sr-only-thead">
                         <tr>
                             {columns.map((c) => (
-                                <th key={c}>{headerLabel(c, columnOverrides)}</th>
+                                <th key={c}>{headerLabel(c, mergedOverrides)}</th>
                             ))}
                         </tr>
                         </thead>
@@ -280,7 +331,7 @@ export default function PredictionsTable({
                         {/* Sticky header */}
                         <tr className="fake-header">
                             {columns.map((c) => {
-                                const cfg = configFor(c, columnOverrides);
+                                const cfg = configFor(c, mergedOverrides);
                                 const align = cfg.align ?? autoAlign(rows[0]?.[c]);
                                 const alignCls =
                                     align === "right"
@@ -298,7 +349,7 @@ export default function PredictionsTable({
                                         key={c}
                                         className={["fake-th", alignCls, freeze, widthCls].join(" ")}
                                     >
-                                        {headerLabel(c, columnOverrides)}
+                                        {headerLabel(c, mergedOverrides)}
                                     </td>
                                 );
                             })}
@@ -315,7 +366,7 @@ export default function PredictionsTable({
                         {rows.map((row, idx) => (
                             <tr key={idx}>
                                 {columns.map((c) => {
-                                    const cfg = configFor(c, columnOverrides);
+                                    const cfg = configFor(c, mergedOverrides);
                                     const v = (row as AnyRow)[c];
                                     const align = cfg.align ?? autoAlign(v);
                                     const alignCls =
@@ -324,7 +375,7 @@ export default function PredictionsTable({
                                             : align === "center"
                                                 ? "center"
                                                 : "";
-                                    const rendered = cfg.format ? cfg.format(v) : formatCell(v);
+                                    const rendered = cfg.format ? cfg.format(v, row) : formatCell(v);
 
                                     const i = FREEZE_KEYS.indexOf(c as any);
                                     const freeze = i >= 0 ? `freeze-${i}` : "";

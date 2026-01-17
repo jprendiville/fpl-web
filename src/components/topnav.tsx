@@ -28,7 +28,8 @@ export default function TopNav() {
         pathname.includes("/league-table");
 
     // NEW: settings is never "active" because it doesn't navigate
-    const settingsActive = false;
+    const settingsActive =
+        pathname.includes("/settings");
 
     useEffect(() => {
         const onDocClick = (e: MouseEvent) => {
@@ -90,20 +91,6 @@ export default function TopNav() {
         fontWeight: 600,
         textDecoration: "none",
     };
-
-    // ---- NEW: placeholder actions ----
-    function reloadData() {
-        console.log("Reload data triggered");
-    }
-    function recalcPredictions() {
-        console.log("Recalculate predictions triggered");
-    }
-    function refreshFixtures() {
-        console.log("Refresh fixtures triggered");
-    }
-    function clearCache() {
-        console.log("Clear cache triggered");
-    }
 
     return (
         <>
@@ -183,7 +170,11 @@ export default function TopNav() {
                                 Settings
                             </button>
 
-
+                            {settingsOpen && (
+                                <div id="settings-menu" role="menu" className="dropdown-menu">
+                                    <DropdownLink to="/settings/player-status" label="Player Status" onClick={() => setSettingsOpen(false)}/>
+                                </div>
+                            )}
                         </div>
 
                     </nav>

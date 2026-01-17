@@ -71,35 +71,88 @@ export default function PlayerTable({
 
     const rows = data?.results ?? [];
 
-    // Build columns strictly from whitelist
-    const { columns } = buildColumnsOnly(
-        rows,
-        columnsToShow,
-        columnOverrides,
-        { keepMissing: true }
-    );
-
-    // ---- Data: upcoming events (for headers) ----
-    const { data: events } = useQuery({
-        queryKey: ["upcoming-events"],
-        queryFn: async (): Promise<any[]> => {
-            const r = await api.get("/v1/events/upcoming/");
+    // ---- Options: fetch all Player Statuses ----
+    const { data: statusApi } = useQuery({
+        queryKey: ["player-status-options"],
+        queryFn: async () => {
+            const r = await api.get("/settings/player-status/");
             return r.data;
         },
         staleTime: 5 * 60 * 1000,
     });
 
-    // ---- Options: fetch all Teams (unpaginated) ----
+    const statusOptions = useMemo(() => {
+        if (!statusApi) return [];
+        return statusApi.map((s: any) => ({
+            id: s.status,
+            label: s.description || s.status.toUpperCase(),
+            colour: s.colour,
+        }));
+    }, [statusApi]);
+
+    // ---- Add status column override ----
+    const mergedOverrides: ColumnMap = {
+        ...columnOverrides,
+        status: {
+            label: "Status",
+            format: (value: any, row: AnyRow) => {
+                const colour = row.status?.colour || "#999";
+                const description = row.status?.description || "";
+
+                return (
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            justifyContent: "center"
+                        }}
+                        title={description}
+                    >
+                        <div
+                            style={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: "50%",
+                                backgroundColor: colour,
+                                border: "1px solid #666",
+                            }}
+                        />
+                    </div>
+                );
+            },
+        },
+
+    };
+
+    // Build columns strictly from whitelist
+    const { columns } = buildColumnsOnly(
+        rows,
+        columnsToShow,
+        mergedOverrides,
+        { keepMissing: true }
+    );
+
+    // ---- Data: upcoming events ----
+    const { data: events } = useQuery({
+        queryKey: ["upcoming-events"],
+        queryFn: async (): Promise<any[]> => {
+            const r = await api.get("/events/upcoming/");
+            return r.data;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+
+    // ---- Options: fetch all Teams ----
     const { data: teamsApi } = useQuery({
         queryKey: ["teams-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
-            const r = await api.get("/v1/teams/");
+            const r = await api.get("/teams/");
             return normalizeToPage(r.data);
         },
         staleTime: 5 * 60 * 1000,
     });
 
-    // Team filter options
     const teamOptions = useMemo(() => {
         const list = teamsApi?.results ?? [];
         if (list.length) {
@@ -108,7 +161,6 @@ export default function PlayerTable({
                 label: t.short_name || t.name || String(t.id),
             }));
         }
-        // fallback from rows
         const seen = new Map<number, string>();
         rows.forEach((r: AnyRow) => {
             const t = r["team"] as any;
@@ -118,11 +170,11 @@ export default function PlayerTable({
         return Array.from(seen, ([id, label]) => ({ id, label }));
     }, [teamsApi, rows]);
 
-    // ---- Options: fetch all Element Types (unpaginated) ----
+    // ---- Options: fetch all Element Types ----
     const { data: typesApi } = useQuery({
         queryKey: ["types-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
-            const r = await api.get("/v1/element-types/");
+            const r = await api.get("/element-types/");
             return r.data;
         },
         staleTime: 5 * 60 * 1000,
@@ -136,7 +188,6 @@ export default function PlayerTable({
                 label: t.singular_name_short || t.singular_name || t.name || String(t.id),
             }));
         }
-        // fallback from rows
         const seen = new Map<number, string>();
         rows.forEach((r: AnyRow) => {
             const t = r["type"] as any;
@@ -146,7 +197,7 @@ export default function PlayerTable({
         return Array.from(seen, ([id, label]) => ({ id, label }));
     }, [typesApi, rows]);
 
-    // Derive page size from next/prev if present; fallback 20
+    // ---- Pagination calculations ----
     const pageSize = (() => {
         const fallback = 20;
         try {
@@ -160,13 +211,14 @@ export default function PlayerTable({
 
     const totalPages =
         data?.count ? Math.max(1, Math.ceil(data.count / pageSize)) : undefined;
+
     const canGoPrev = page > 1 && !isLoading;
     const canGoNext =
         !isLoading && (typeof totalPages === "number" ? page < totalPages : !!data?.next);
     const canGoFirst = canGoPrev;
     const canGoLast = typeof totalPages === "number" && page < totalPages && !isLoading;
 
-    // ---- Player history modal state ----
+    // ---- Player history modal ----
     const [hist, setHist] = useState<{ id: number; summary: any } | null>(null);
 
     function openHistory(row: AnyRow) {
@@ -190,7 +242,7 @@ export default function PlayerTable({
 
     return (
         <main className="mx-auto max-w-6xl px-4 page--compact">
-            {/* Toolbar: title + filters in one line */}
+            {/* Toolbar */}
             <div className="page-toolbar" role="region" aria-label="Players filters">
                 <h1 className="page-title">{title}</h1>
 
@@ -238,15 +290,15 @@ export default function PlayerTable({
                             style={selectStyle}
                         >
                             <option value="">All</option>
-                            <option value="a">Available</option>
-                            <option value="d">Doubtful</option>
-                            <option value="i">Injured</option>
-                            <option value="s">Suspended</option>
-                            <option value="u">Unavailable</option>
+                            {statusOptions.map((o) => (
+                                <option key={o.id} value={o.id}>
+                                    {o.label}
+                                </option>
+                            ))}
                         </select>
                     </label>
 
-                    {/* Max price (m) */}
+                    {/* Max price */}
                     <label>
                         <span style={{ fontSize: 12, color: "#374151" }}>Max price (m)</span>
                         <input
@@ -273,25 +325,27 @@ export default function PlayerTable({
             <div className="table-wrap">
                 <div className="table-scroll">
                     <table className="data">
-                        {/* keep a semantic thead for screen readers only */}
                         <thead className="sr-only-thead">
                         <tr>
                             {columns.map((c) => (
-                                <th key={c}>{headerLabel(c, columnOverrides)}</th>
+                                <th key={c}>{headerLabel(c, mergedOverrides)}</th>
                             ))}
                         </tr>
                         </thead>
 
                         <tbody>
-                        {/* FAKE sticky header that behaves like body cells */}
+                        {/* Fake sticky header */}
                         <tr className="fake-header">
                             {columns.map((c) => {
-                                const cfg = configFor(c, columnOverrides);
+                                const cfg = configFor(c, mergedOverrides);
                                 const align = cfg.align ?? autoAlign(rows[0]?.[c]);
                                 const alignCls =
-                                    align === "right" ? "num" : align === "center" ? "center" : "";
+                                    align === "right"
+                                        ? "num"
+                                        : align === "center"
+                                            ? "center"
+                                            : "";
 
-                                // sticky + width classes
                                 const i = FREEZE_KEYS.indexOf(c as any);
                                 const freeze = i >= 0 ? `freeze-${i}` : "";
                                 const widthCls = COL_WIDTH_CLASS[c] || "";
@@ -299,14 +353,16 @@ export default function PlayerTable({
                                 return (
                                     <td
                                         key={c}
-                                        className={["fake-th", alignCls, freeze, widthCls].join(" ").trim()}
+                                        className={["fake-th", alignCls, freeze, widthCls]
+                                            .join(" ")
+                                            .trim()}
                                     >
-                                        {headerLabel(c, columnOverrides)}
+                                        {headerLabel(c, mergedOverrides)}
                                     </td>
                                 );
                             })}
 
-                            {/* Add dynamic event headers */}
+                            {/* Event headers */}
                             {events?.map((ev) => {
                                 const d = new Date(ev.deadline_time);
                                 const day = d.getDate();
@@ -328,31 +384,40 @@ export default function PlayerTable({
                             })}
                         </tr>
 
-                        {/* DATA ROWS */}
+                        {/* Data rows */}
                         {rows.map((row, idx) => (
                             <tr key={idx}>
                                 {columns.map((c) => {
-                                    const cfg = configFor(c, columnOverrides);
+                                    const cfg = configFor(c, mergedOverrides);
                                     const v = (row as AnyRow)[c];
                                     const align = cfg.align ?? autoAlign(v);
                                     const alignCls =
-                                        align === "right" ? "num" : align === "center" ? "center" : "";
-                                    const rendered = cfg.format ? cfg.format(v) : formatCell(v);
+                                        align === "right"
+                                            ? "num"
+                                            : align === "center"
+                                                ? "center"
+                                                : "";
+                                    const rendered = cfg.format ? cfg.format(v, row) : formatCell(v);
 
-                                    // sticky & width classes
                                     const i = FREEZE_KEYS.indexOf(c as any);
                                     const freeze = i >= 0 ? `freeze-${i}` : "";
                                     const widthCls = COL_WIDTH_CLASS[c] || "";
 
-                                    // eye button for history
                                     if (c === "history") {
                                         return (
-                                            <td key={c} className={[alignCls, freeze, widthCls].join(" ").trim()}>
+                                            <td
+                                                key={c}
+                                                className={[alignCls, freeze, widthCls]
+                                                    .join(" ")
+                                                    .trim()}
+                                            >
                                                 <button
                                                     type="button"
                                                     onClick={() => openHistory(row)}
                                                     title="View history"
-                                                    aria-label={`View history for ${(row["web_name"] as string) || "player"}`}
+                                                    aria-label={`View history for ${
+                                                        (row["web_name"] as string) || "player"
+                                                    }`}
                                                     style={eyeBtnStyle}
                                                 >
                                                     👁
@@ -361,20 +426,26 @@ export default function PlayerTable({
                                         );
                                     }
 
-
                                     return (
-                                        <td key={c} className={[alignCls, freeze, widthCls].join(" ").trim()}>
+                                        <td
+                                            key={c}
+                                            className={[alignCls, freeze, widthCls]
+                                                .join(" ")
+                                                .trim()}
+                                        >
                                             {rendered}
                                         </td>
                                     );
                                 })}
-                                {/* Add next_games cells */}
+
+                                {/* Next games */}
                                 {events?.map((ev) => {
                                     const nextGames: any[] = (row as AnyRow)["next_games"] ?? [];
                                     const ng = nextGames.find((g) => g.event === ev.id);
                                     const opp = ng?.opponents;
 
-                                    const bg = opp ? FDR_COLORS[opp.color as number] || "transparent" : "transparent";
+                                    const bg =
+                                        opp ? FDR_COLORS[opp.color as number] || "transparent" : "transparent";
 
                                     return (
                                         <td
@@ -391,7 +462,10 @@ export default function PlayerTable({
 
                         {!rows.length && (
                             <tr>
-                                <td colSpan={columns.length + (events?.length || 0)} style={{ padding: 16 }}>
+                                <td
+                                    colSpan={columns.length + (events?.length || 0)}
+                                    style={{ padding: 16 }}
+                                >
                                     No results
                                 </td>
                             </tr>
@@ -401,7 +475,7 @@ export default function PlayerTable({
                 </div>
             </div>
 
-            {/* ---- Pagination ---- */}
+            {/* Pagination */}
             <PaginationBar
                 page={page}
                 totalPages={typeof totalPages === "number" ? totalPages : undefined}
@@ -415,7 +489,7 @@ export default function PlayerTable({
                 onLast={() => goLast(totalPages)}
             />
 
-            {/* ---- Player History Modal ---- */}
+            {/* History modal */}
             <PlayerHistoryModal
                 open={!!hist}
                 onClose={() => setHist(null)}

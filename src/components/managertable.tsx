@@ -16,8 +16,11 @@ import {
 import "../styles/global.css";
 import "../styles/table.css";
 
-import { FREEZE_KEYS as PLAYER_FREEZE_KEYS,
-    COL_WIDTH_CLASS as PLAYER_COL_WIDTH_CLASS, } from "../features/players/player-utils";
+import {
+    FREEZE_KEYS as PLAYER_FREEZE_KEYS,
+    COL_WIDTH_CLASS as PLAYER_COL_WIDTH_CLASS,
+} from "../features/players/player-utils";
+
 import { normalizeToPage, getFdrColors } from "../features/teams/team-utils";
 import PlayerHistoryModal from "../pages/players/player-history";
 
@@ -26,82 +29,71 @@ type AnyRow = Record<string, unknown>;
 const FDR_COLORS = getFdrColors();
 
 const LOCAL_FREEZE_KEYS = [
-    "position",   // lane 0
-    "web_name",   // lane 1
-    "history",    // lane 2
-    "status",     // lane 3
-    "team",       // lane 4
-    "type",       // lane 5  <-- use the actual key you render
+    "position",
+    "web_name",
+    "history",
+    "status",
+    "team",
+    "type",
 ] as const;
 
 const LOCAL_COL_WIDTH: Record<string, string> = {
     ...PLAYER_COL_WIDTH_CLASS,
-    position: "col-slot",  // narrow slot column (44px)
-    type: "col-pos",       // ensure type gets the same width as "pos"
+    position: "col-slot",
+    type: "col-pos",
 };
 
-/** Minimal shape of the /v1/managers/ response we actually use here */
-type ManagersApiPick = {
-    position: number;
-    is_sub: boolean;
-    player_name: string;
-    format_expected_points?: string;
-    player: AnyRow & {
-        id: number;
-        web_name?: string;
-        team?: { id: number; short_name?: string; name?: string };
-        type?: { id: number; singular_name_short?: string; singular_name?: string };
-        next_games?: Array<{
-            event: number;
-            opponents?: { color?: number; text?: string };
-        }>;
-    };
+// ---------------- STATUS OVERRIDE ----------------
+const STATUS_OVERRIDE: ColumnMap = {
+    status: {
+        label: "Status",
+        value: () => null,
+        format: (value: any, row: AnyRow) => {
+            const colour = row.status?.colour || "#999";
+            const description = row.status?.description || "";
+
+            return (
+                <div
+                    style={{
+                        display: "grid",
+                        placeItems: "center",
+                    }}
+                    title={description}
+                >
+                    <div
+                        style={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: "50%",
+                            backgroundColor: colour,
+                            border: "1px solid #666",
+                        }}
+                    />
+                </div>
+            );
+        },
+    },
 };
 
-type ManagersApiItem = {
-    information: { id: number; formatted_name?: string; name?: string };
-    manager_team: { id: number; display_active_chip?: string };
-    total_expected?: string;
-    classic_leagues?: Array<{ id: number; name: string; rank: number | null }>;
-    picks: ManagersApiPick[];
-};
-
-type ManagersApiResponse = {
-    results: ManagersApiItem[];
-};
-
-interface ManagerTableProps {
-    /** Manager ids to request (comma separated or number[]). Optional—if omitted, a small input will be shown. */
-    ids?: string | number[];
-    /** Title shown at the top of the table */
-    title?: string;
-    /** Whitelist the columns (from the flattened pick rows) */
-    columnsToShow: string[];
-    /** Optional per-column overrides (label, align, formatter, etc.) */
-    columnOverrides?: ColumnMap;
-    /** Optional subheading (right side) */
-    subtitleRight?: React.ReactNode;
-}
-
-/**
- * Flattens manager picks into simple rows that look like the Players table rows.
- * We copy relevant `player` fields to the root row and keep manager/pick context.
- */
-function flattenManagerPicks(items: ManagersApiItem[]): AnyRow[] {
+// ---------------- FLATTEN MANAGER PICKS ----------------
+function flattenManagerPicks(items: any[]): AnyRow[] {
     const rows: AnyRow[] = [];
 
     for (const mgr of items) {
         const managerLabel =
-            mgr.information?.formatted_name || mgr.information?.name || String(mgr.information?.id || "");
+            mgr.information?.formatted_name ||
+            mgr.information?.name ||
+            String(mgr.information?.id || "");
 
         for (const p of mgr.picks || []) {
             const player = p.player || {};
+
             const row: AnyRow = {
                 id: player.id,
                 web_name: player.web_name ?? p.player_name ?? "",
                 team: player.team,
                 type: player.type,
-                status: player.status,
+                status: player.status, // <-- already full object with colour
                 form: player.form,
                 now_cost: player.now_cost,
                 total_points: player.total_points,
@@ -110,11 +102,10 @@ function flattenManagerPicks(items: ManagersApiItem[]): AnyRow[] {
                 vapm: player.vapm,
                 history: "history",
 
-                // context
                 manager: { id: mgr.information?.id, name: managerLabel },
-                manager_chip: mgr.manager_team?.display_active_chip ?? "",   // ⬅️ add this
+                manager_chip: mgr.manager_team?.display_active_chip ?? "",
                 position: p.position,
-                is_sub: p.is_sub,                                           // already present
+                is_sub: p.is_sub,
                 expected_points: p.format_expected_points ?? player.ep_next,
 
                 next_games: player.next_games ?? [],
@@ -127,14 +118,20 @@ function flattenManagerPicks(items: ManagersApiItem[]): AnyRow[] {
     return rows;
 }
 
+// ---------------- COMPONENT ----------------
 export default function ManagerTable({
                                          ids,
                                          title = "Manager Team",
                                          columnsToShow,
                                          columnOverrides = {},
                                          subtitleRight,
-                                     }: ManagerTableProps) {
-    // If ids not supplied by parent, allow user to enter them.
+                                     }: {
+    ids?: string | number[];
+    title?: string;
+    columnsToShow: string[];
+    columnOverrides?: ColumnMap;
+    subtitleRight?: React.ReactNode;
+}) {
     const [idsLocal, setIdsLocal] = useState<string>("");
 
     const idsParam = useMemo(() => {
@@ -145,11 +142,11 @@ export default function ManagerTable({
 
     const haveIds = !!idsParam && idsParam.trim().length > 0;
 
-    // ---- Fetch managers (no pagination) ----
+    // ---- Fetch managers ----
     const { data, isLoading } = useQuery({
         queryKey: ["managers", idsParam],
-        queryFn: async (): Promise<ManagersApiResponse> => {
-            const resp = await api.get("/v1/managers/", { params: { ids: idsParam } });
+        queryFn: async () => {
+            const resp = await api.get("/managers/", { params: { ids: idsParam } });
             return resp.data;
         },
         enabled: haveIds,
@@ -161,34 +158,37 @@ export default function ManagerTable({
         [data?.results]
     );
 
-    // Build columns strictly from whitelist, like Players
-    const { columns } = buildColumnsOnly(flatRows, columnsToShow, columnOverrides, {
+    // ---- MERGE OVERRIDES (IMPORTANT!) ----
+    const mergedOverrides: ColumnMap = {
+        ...columnOverrides,
+        ...STATUS_OVERRIDE,
+    };
+
+    const { columns } = buildColumnsOnly(flatRows, columnsToShow, mergedOverrides, {
         keepMissing: true,
     });
 
-    // ---- Upcoming events (for dynamic FDR header cells) ----
+    // ---- Upcoming events ----
     const { data: events } = useQuery({
         queryKey: ["upcoming-events"],
-        queryFn: async (): Promise<any[]> => {
-            const r = await api.get("/v1/events/upcoming/");
-            return r.data;
-        },
+        queryFn: async () => (await api.get("/events/upcoming/")).data,
         staleTime: 5 * 60 * 1000,
     });
 
-    // ---- Optional supporting lookups (cached; parity with Players) ----
+    // ---- Supporting lookups ----
     useQuery({
         queryKey: ["teams-options"],
-        queryFn: async () => normalizeToPage((await api.get("/v1/teams/")).data),
-        staleTime: 5 * 60 * 1000,
-    });
-    useQuery({
-        queryKey: ["types-options"],
-        queryFn: async () => (await api.get("/v1/element-types/")).data,
+        queryFn: async () => normalizeToPage((await api.get("/teams/")).data),
         staleTime: 5 * 60 * 1000,
     });
 
-    // ---- Player history modal state ----
+    useQuery({
+        queryKey: ["types-options"],
+        queryFn: async () => (await api.get("/element-types/")).data,
+        staleTime: 5 * 60 * 1000,
+    });
+
+    // ---- History modal ----
     const [hist, setHist] = useState<{ id: number; summary: any } | null>(null);
 
     function openHistory(row: AnyRow) {
@@ -198,7 +198,7 @@ export default function ManagerTable({
         setHist({
             id: Number(row["id"]),
             summary: {
-                name: (row["web_name"] as string) || "",
+                name: row["web_name"] as string,
                 team: teamObj?.short_name || teamObj?.name || "",
                 type: typeObj?.singular_name_short || typeObj?.singular_name || "",
                 now_cost: row["now_cost"],
@@ -210,16 +210,14 @@ export default function ManagerTable({
         });
     }
 
-    // simple local submit handler when ids prop not provided
     function submitIds(e: React.FormEvent) {
         e.preventDefault();
-        // nothing else required; idsLocal already drives the query via idsParam
     }
 
     return (
         <main className="mx-auto max-w-6xl px-4 page--compact">
             {/* Toolbar */}
-            <div className="page-toolbar" role="region" aria-label="Managers table">
+            <div className="page-toolbar">
                 <div
                     style={{
                         display: "flex",
@@ -231,11 +229,12 @@ export default function ManagerTable({
                 >
                     <h1 className="page-title">{title}</h1>
 
-                    {/* If parent didn't pass ids, show an input to collect them */}
                     {!ids && (
-                        <form onSubmit={submitIds} style={{ display: "flex", gap: 8, alignItems: "end" }}>
+                        <form onSubmit={submitIds} style={{ display: "flex", gap: 8 }}>
                             <label>
-                                <span style={{ fontSize: 12, color: "#374151" }}>Manager ID(s)</span>
+                                <span style={{ fontSize: 12, color: "#374151" }}>
+                                    Manager ID(s)
+                                </span>
                                 <input
                                     type="text"
                                     placeholder="e.g. 1162054 or 1162054,123456"
@@ -244,7 +243,9 @@ export default function ManagerTable({
                                     style={inputStyle}
                                 />
                             </label>
-                            <button type="submit" style={btnStyle}>Load</button>
+                            <button type="submit" style={btnStyle}>
+                                Load
+                            </button>
                         </form>
                     )}
 
@@ -256,13 +257,13 @@ export default function ManagerTable({
             <div className="table-wrap managers-table">
                 <div className="table-scroll">
                     <table className="data">
-                        {/* semantic thead for a11y only */}
                         <thead className="sr-only-thead">
                         <tr>
                             {columns.map((c) => (
                                 <th key={c}>
-                                    {/* Suppress "position" header text */}
-                                    {c === "position" ? "" : headerLabel(c, columnOverrides)}
+                                    {c === "position"
+                                        ? ""
+                                        : headerLabel(c, mergedOverrides)}
                                 </th>
                             ))}
                             {events?.map((ev) => (
@@ -272,14 +273,19 @@ export default function ManagerTable({
                         </thead>
 
                         <tbody>
-                        {/* Sticky fake header (behaves like body cells) */}
+                        {/* Sticky header */}
                         <tr className="fake-header">
                             {columns.map((c) => {
-                                const cfg = configFor(c, columnOverrides);
-                                const align = cfg.align ?? autoAlign(flatRows[0]?.[c]);
-                                const alignCls = align === "right" ? "num" : align === "center" ? "center" : "";
+                                const cfg = configFor(c, mergedOverrides);
+                                const align =
+                                    cfg.align ?? autoAlign(flatRows[0]?.[c]);
+                                const alignCls =
+                                    align === "right"
+                                        ? "num"
+                                        : align === "center"
+                                            ? "center"
+                                            : "";
 
-                                // sticky + width classes
                                 const i = LOCAL_FREEZE_KEYS.indexOf(c as any);
                                 const freeze = i >= 0 ? `freeze-${i}` : "";
                                 const widthCls = LOCAL_COL_WIDTH[c] || "";
@@ -287,19 +293,28 @@ export default function ManagerTable({
                                 return (
                                     <td
                                         key={c}
-                                        className={["fake-th", alignCls, freeze, widthCls].join(" ").trim()}
+                                        className={[
+                                            "fake-th",
+                                            alignCls,
+                                            freeze,
+                                            widthCls,
+                                        ]
+                                            .join(" ")
+                                            .trim()}
                                     >
-                                        {/* Suppress "position" header label */}
-                                        {c === "position" ? "" : headerLabel(c, columnOverrides)}
+                                        {c === "position"
+                                            ? ""
+                                            : headerLabel(c, mergedOverrides)}
                                     </td>
                                 );
                             })}
 
-                            {/* Dynamic GW headers (like Players) */}
                             {events?.map((ev) => {
                                 const d = new Date(ev.deadline_time);
                                 const day = d.getDate();
-                                const month = d.toLocaleString("en-GB", { month: "short" });
+                                const month = d.toLocaleString("en-GB", {
+                                    month: "short",
+                                });
                                 const time = d.toLocaleTimeString("en-GB", {
                                     hour: "2-digit",
                                     minute: "2-digit",
@@ -319,7 +334,9 @@ export default function ManagerTable({
 
                         {/* Data rows */}
                         {flatRows.map((row, idx) => {
-                            const isBenchBoost = String(row["manager_chip"] || "")
+                            const isBenchBoost = String(
+                                row["manager_chip"] || ""
+                            )
                                 .trim()
                                 .toLowerCase()
                                 .startsWith("bench boost");
@@ -329,26 +346,45 @@ export default function ManagerTable({
                             return (
                                 <tr key={idx} className={muted ? "muted-row" : ""}>
                                     {columns.map((c) => {
-                                        const cfg = configFor(c, columnOverrides);
+                                        const cfg = configFor(c, mergedOverrides);
                                         const v = row[c];
-                                        const align = cfg.align ?? autoAlign(v);
-                                        const alignCls = align === "right" ? "num" : align === "center" ? "center" : "";
-                                        const rendered = cfg.format ? cfg.format(v) : formatCell(v);
+                                        const align =
+                                            cfg.align ?? autoAlign(v);
+                                        const alignCls =
+                                            align === "right"
+                                                ? "num"
+                                                : align === "center"
+                                                    ? "center"
+                                                    : "";
+                                        const rendered = cfg.format
+                                            ? cfg.format(v, row)
+                                            : formatCell(v);
 
-                                        // sticky & width classes
-                                        const i = LOCAL_FREEZE_KEYS.indexOf(c as any);
-                                        const freeze = i >= 0 ? `freeze-${i}` : "";
-                                        const widthCls = LOCAL_COL_WIDTH[c] || "";
+                                        const i =
+                                            LOCAL_FREEZE_KEYS.indexOf(c as any);
+                                        const freeze =
+                                            i >= 0 ? `freeze-${i}` : "";
+                                        const widthCls =
+                                            LOCAL_COL_WIDTH[c] || "";
 
-                                        // 👁 History button cell
                                         if (c === "history") {
                                             return (
-                                                <td key={c} className={[alignCls, freeze, widthCls].join(" ").trim()}>
+                                                <td
+                                                    key={c}
+                                                    className={[
+                                                        alignCls,
+                                                        freeze,
+                                                        widthCls,
+                                                    ]
+                                                        .join(" ")
+                                                        .trim()}
+                                                >
                                                     <button
                                                         type="button"
-                                                        onClick={() => openHistory(row)}
+                                                        onClick={() =>
+                                                            openHistory(row)
+                                                        }
                                                         title="View history"
-                                                        aria-label={`View history for ${(row["web_name"] as string) || "player"}`}
                                                         style={eyeBtnStyle}
                                                     >
                                                         👁
@@ -358,19 +394,36 @@ export default function ManagerTable({
                                         }
 
                                         return (
-                                            <td key={c} className={[alignCls, freeze, widthCls].join(" ").trim()}>
+                                            <td
+                                                key={c}
+                                                className={[
+                                                    alignCls,
+                                                    freeze,
+                                                    widthCls,
+                                                ]
+                                                    .join(" ")
+                                                    .trim()}
+                                            >
                                                 {rendered}
                                             </td>
                                         );
                                     })}
 
-                                    {/* FDR cells (next_games) */}
+                                    {/* FDR cells */}
                                     {events?.map((ev) => {
-                                        const nextGames: any[] = (row as AnyRow)["next_games"] ?? [];
-                                        const ng = nextGames.find((g) => g.event === ev.id);
+                                        const nextGames: any[] =
+                                            (row as AnyRow)["next_games"] ??
+                                            [];
+                                        const ng = nextGames.find(
+                                            (g) => g.event === ev.id
+                                        );
                                         const opp = ng?.opponents;
 
-                                        const bg = opp ? FDR_COLORS[opp.color as number] || "transparent" : "transparent";
+                                        const bg = opp
+                                            ? FDR_COLORS[
+                                            opp.color as number
+                                            ] || "transparent"
+                                            : "transparent";
 
                                         return (
                                             <td
@@ -388,8 +441,15 @@ export default function ManagerTable({
 
                         {!flatRows.length && !isLoading && (
                             <tr>
-                                <td colSpan={columns.length + (events?.length || 0)} style={{ padding: 16 }}>
-                                    {haveIds ? "No results" : "Enter manager ID(s) and click Load"}
+                                <td
+                                    colSpan={
+                                        columns.length + (events?.length || 0)
+                                    }
+                                    style={{ padding: 16 }}
+                                >
+                                    {haveIds
+                                        ? "No results"
+                                        : "Enter manager ID(s) and click Load"}
                                 </td>
                             </tr>
                         )}
@@ -398,7 +458,6 @@ export default function ManagerTable({
                 </div>
             </div>
 
-            {/* Player History Modal (reused) */}
             <PlayerHistoryModal
                 open={!!hist}
                 onClose={() => setHist(null)}
@@ -409,7 +468,7 @@ export default function ManagerTable({
     );
 }
 
-/* ---------- tiny local styles (mirror Players) ---------- */
+/* ---------- styles ---------- */
 const btnStyle: React.CSSProperties = {
     border: "1px solid var(--border)",
     borderRadius: 12,
@@ -418,6 +477,7 @@ const btnStyle: React.CSSProperties = {
     background: "var(--bg)",
     cursor: "pointer",
 };
+
 const inputStyle: React.CSSProperties = {
     border: "1px solid var(--border)",
     borderRadius: 12,

@@ -23,7 +23,7 @@ const DEFENCE_PAGE_OVERRIDES: ColumnMap = {
 export default function DefencePage() {
     return (
         <PlayerTable
-            endpoint="/v1/defence/"
+            endpoint="/defence/"
             title="Defence" // This will render inside PlayerTable's toolbar
             columnsToShow={DEFENCE_ONLY}
             columnOverrides={DEFENCE_PAGE_OVERRIDES}

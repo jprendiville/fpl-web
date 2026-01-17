@@ -23,7 +23,7 @@ const PLAYERS_PAGE_OVERRIDES: ColumnMap = {
 export default function PredictionsPage() {
     return (
         <PlayerTable
-            endpoint="/v1/predictions/"
+            endpoint="/predictions/"
             title="Predictions"
             columnsToShow={PLAYERS_ONLY}
             columnOverrides={PLAYERS_PAGE_OVERRIDES}

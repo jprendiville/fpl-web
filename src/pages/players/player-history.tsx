@@ -45,7 +45,7 @@ export default function PlayerHistoryModal({ open, onClose, playerId, summary }:
         queryKey: ["player-history", playerId],
         enabled: open && !!playerId,
         queryFn: async (): Promise<HistoryRow[]> => {
-            const r = await api.get(`/v1/players/${playerId}/player-history/`);
+            const r = await api.get(`/players/${playerId}/player-history/`);
             return r.data;
         },
     });

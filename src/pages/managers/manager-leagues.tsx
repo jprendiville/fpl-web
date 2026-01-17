@@ -65,18 +65,18 @@ export default function ManagerLeaguesPage() {
     const { data, isLoading, refetch } = useQuery({
         queryKey: ["manager-leagues", idsParam],
         queryFn: async (): Promise<ManagerLeaguesResponse> => {
-            const r = await api.get("/v1/managers/leagues/", { params: { ids: idsParam } });
+            const r = await api.get("/managers/leagues/", { params: { ids: idsParam } });
             return r.data;
         },
         enabled: hasIds,
         keepPreviousData: true,
     });
 
-    // ---- Reload mutation: POST /api/v1/reload-league/<league_id>/ { manager_id } ----
+    // ---- Reload mutation: POST /api/reload-league/<league_id>/ { manager_id } ----
     const reloadMut = useMutation({
         mutationFn: async (league_id: number) => {
             const managerId = data?.results?.[0]?.information?.id;
-            return api.post(`/v1/reload-league/${league_id}/`, {
+            return api.post(`/reload-league/${league_id}/`, {
                 manager_id: managerId,
             });
         },
@@ -87,7 +87,7 @@ export default function ManagerLeaguesPage() {
     const goProgression = async (league_id: number) => {
         await qc.prefetchQuery({
             queryKey: ["league-progression", league_id],
-            queryFn: async () => (await api.get(`/v1/league-progression/${league_id}/`)).data,
+            queryFn: async () => (await api.get(`/league-progression/${league_id}/`)).data,
             staleTime: 30_000,
         });
 

@@ -12,6 +12,7 @@ import ManagerLeaguesPage from "./pages/managers/manager-leagues.tsx";
 import ManagerLeagueProgressionPage
     from "./pages/managers/league-progression.tsx";
 import PredictionsPage from "./pages/players/predictions.tsx";
+import PlayerStatusPage from "./pages/settings/player-status.tsx";
 
 export default function App() {
     return (
@@ -30,6 +31,7 @@ export default function App() {
                 <Route path="/league-table" element={<LeagueTablePage />} />
                 <Route path="/league-progression" element={<ManagerLeagueProgressionPage />} />
                 <Route path="/league-progression/:league_id" element={<ManagerLeagueProgressionPage />} />
+                <Route path="/settings/player-status" element={<PlayerStatusPage />} />
                 <Route path="*" element={<NotFound />} />
             </Routes>
         </>

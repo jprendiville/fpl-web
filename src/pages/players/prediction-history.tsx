@@ -40,7 +40,7 @@ export default function PredictionHistoryModal({ open, onClose, playerId, summar
         queryKey: ["prediction-history", playerId],
         enabled: open && !!playerId,
         queryFn: async (): Promise<HistoryRow[]> => {
-            const r = await api.get(`/v1/predictions/${playerId}/player-history/`);
+            const r = await api.get(`/predictions/${playerId}/player-history/`);
             return r.data;
         },
     });

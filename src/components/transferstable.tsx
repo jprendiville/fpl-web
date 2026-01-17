@@ -23,9 +23,9 @@ type AnyRow = Record<string, unknown>;
 type DRFPage<T> = { count: number; next: string | null; previous: string | null; results: T[] };
 
 interface TransfersTableProps {
-    endpoint: string;        // /v1/transfers/?type=in or ?type=out
-    title: string;           // "Transfers In" or "Transfers Out"
-    transferField: string;   // "transfers_in_event" or "transfers_out_event"
+    endpoint: string;
+    title: string;
+    transferField: string;
 }
 
 const TRANSFER_COLUMNS = [
@@ -38,7 +38,7 @@ const TRANSFER_COLUMNS = [
     "selected_by_percent",
 ];
 
-const TRANSFER_OVERRIDES: ColumnMap = {
+const BASE_OVERRIDES: ColumnMap = {
     history: { label: "History", align: "center" },
     transfers: { label: "Transfers", align: "right" },
     selected_by_percent: { label: "Ownership", align: "right" },
@@ -77,20 +77,82 @@ export default function TransfersTable({ endpoint, title, transferField }: Trans
         keepPreviousData: true,
     });
 
-    const rows = (data?.results ?? []).map((row) => ({
+    // ---- Fetch status metadata ----
+    const { data: statusApi } = useQuery({
+        queryKey: ["player-status-options"],
+        queryFn: async () => {
+            const r = await api.get("/settings/player-status/");
+            return r.data;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const statusLookup = useMemo(() => {
+        const map = new Map<string, { colour: string; description: string }>();
+        statusApi?.forEach((s: any) => {
+            map.set(s.status, {
+                colour: s.colour,
+                description: s.description || s.status.toUpperCase(),
+            });
+        });
+        return map;
+    }, [statusApi]);
+
+    // ---- Normalize rows ----
+    const rows = (data?.results ?? []).map((row: any) => ({
         ...row,
-        transfers: row[transferField], // unify field name
+        transfers: row[transferField],
+
+        // Normalise status to match PlayerTable / PredictionsTable
+        status: row.status,
     }));
 
-    const { columns } = buildColumnsOnly(rows, TRANSFER_COLUMNS, TRANSFER_OVERRIDES, {
+    // ---- Status override ----
+    const STATUS_OVERRIDE: ColumnMap = {
+        status: {
+            label: "Status",
+            value: () => null,
+            format: (value: any, row: AnyRow) => {
+                const colour = row.status?.colour || "#999";
+                const description = row.status?.description || "";
+
+                return (
+                    <div
+                        style={{
+                            display: "grid",
+                            placeItems: "center",
+                        }}
+                        title={description}
+                    >
+                        <div
+                            style={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: "50%",
+                                backgroundColor: colour,
+                                border: "1px solid #666",
+                            }}
+                        />
+                    </div>
+                );
+            },
+        },
+    };
+
+    const mergedOverrides: ColumnMap = {
+        ...BASE_OVERRIDES,
+        ...STATUS_OVERRIDE,
+    };
+
+    const { columns } = buildColumnsOnly(rows, TRANSFER_COLUMNS, mergedOverrides, {
         keepMissing: true,
     });
 
-    // ---- Fetch Teams (dynamic) ----
+    // ---- Fetch Teams ----
     const { data: teamsApi } = useQuery({
         queryKey: ["teams-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
-            const r = await api.get("/v1/teams/");
+            const r = await api.get("/teams/");
             return normalizeToPage(r.data);
         },
         staleTime: 5 * 60 * 1000,
@@ -98,20 +160,17 @@ export default function TransfersTable({ endpoint, title, transferField }: Trans
 
     const teamOptions = useMemo(() => {
         const list = teamsApi?.results ?? [];
-        if (list.length) {
-            return list.map((t: any) => ({
-                id: t.id,
-                label: t.short_name || t.name || String(t.id),
-            }));
-        }
-        return [];
+        return list.map((t: any) => ({
+            id: t.id,
+            label: t.short_name || t.name || String(t.id),
+        }));
     }, [teamsApi]);
 
-    // ---- Fetch Element Types (dynamic) ----
+    // ---- Fetch Element Types ----
     const { data: typesApi } = useQuery({
         queryKey: ["types-options"],
         queryFn: async (): Promise<DRFPage<any>> => {
-            const r = await api.get("/v1/element-types/");
+            const r = await api.get("/element-types/");
             return r.data;
         },
         staleTime: 5 * 60 * 1000,
@@ -119,20 +178,15 @@ export default function TransfersTable({ endpoint, title, transferField }: Trans
 
     const typeOptions = useMemo(() => {
         const list = typesApi?.results ?? [];
-        if (list.length) {
-            return list.map((t: any) => ({
-                id: t.id,
-                label: t.singular_name_short || t.singular_name || t.name || String(t.id),
-            }));
-        }
-        return [];
+        return list.map((t: any) => ({
+            id: t.id,
+            label: t.singular_name_short || t.singular_name || t.name || String(t.id),
+        }));
     }, [typesApi]);
 
-    // ---- Pagination ----
     const pageSize = 20;
     const totalPages = data?.count ? Math.ceil(data.count / pageSize) : 1;
 
-    // ---- History modal ----
     const [hist, setHist] = useState<{ id: number; summary: any } | null>(null);
 
     function openHistory(row: AnyRow) {
@@ -204,11 +258,11 @@ export default function TransfersTable({ endpoint, title, transferField }: Trans
                             style={selectStyle}
                         >
                             <option value="">All</option>
-                            <option value="a">Available</option>
-                            <option value="d">Doubtful</option>
-                            <option value="i">Injured</option>
-                            <option value="s">Suspended</option>
-                            <option value="u">Unavailable</option>
+                            {statusApi?.map((s: any) => (
+                                <option key={s.status} value={s.status}>
+                                    {s.description || s.status.toUpperCase()}
+                                </option>
+                            ))}
                         </select>
                     </label>
 
@@ -241,7 +295,7 @@ export default function TransfersTable({ endpoint, title, transferField }: Trans
                         <thead className="sr-only-thead">
                         <tr>
                             {columns.map((c) => (
-                                <th key={c}>{headerLabel(c, TRANSFER_OVERRIDES)}</th>
+                                <th key={c}>{headerLabel(c, mergedOverrides)}</th>
                             ))}
                         </tr>
                         </thead>
@@ -250,7 +304,7 @@ export default function TransfersTable({ endpoint, title, transferField }: Trans
                         {/* Sticky header */}
                         <tr className="fake-header">
                             {columns.map((c) => {
-                                const cfg = configFor(c, TRANSFER_OVERRIDES);
+                                const cfg = configFor(c, mergedOverrides);
                                 const align = cfg.align ?? autoAlign(rows[0]?.[c]);
                                 const alignCls =
                                     align === "right"
@@ -266,7 +320,7 @@ export default function TransfersTable({ endpoint, title, transferField }: Trans
                                         key={c}
                                         className={["fake-th", alignCls, widthCls].join(" ")}
                                     >
-                                        {headerLabel(c, TRANSFER_OVERRIDES)}
+                                        {headerLabel(c, mergedOverrides)}
                                     </td>
                                 );
                             })}
@@ -276,7 +330,7 @@ export default function TransfersTable({ endpoint, title, transferField }: Trans
                         {rows.map((row, idx) => (
                             <tr key={idx}>
                                 {columns.map((c) => {
-                                    const cfg = configFor(c, TRANSFER_OVERRIDES);
+                                    const cfg = configFor(c, mergedOverrides);
                                     const v = row[c];
                                     const align = cfg.align ?? autoAlign(v);
                                     const alignCls =
@@ -285,7 +339,9 @@ export default function TransfersTable({ endpoint, title, transferField }: Trans
                                             : align === "center"
                                                 ? "center"
                                                 : "";
-                                    const rendered = cfg.format ? cfg.format(v) : formatCell(v);
+                                    const rendered = cfg.format
+                                        ? cfg.format(v, row)
+                                        : formatCell(v);
 
                                     const widthCls = COL_WIDTH_CLASS[c] || "";
 

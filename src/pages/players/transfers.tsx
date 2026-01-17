@@ -7,7 +7,7 @@ export default function TransfersPage() {
         <div className="transfers-grid">
             <div className="transfers-column">
                 <TransfersTable
-                    endpoint="/v1/transfers-in/"
+                    endpoint="/transfers-in/"
                     title="Transfers In"
                     transferField="transfers_in_event"
                 />
@@ -15,7 +15,7 @@ export default function TransfersPage() {
 
             <div className="transfers-column">
                 <TransfersTable
-                    endpoint="/v1/transfers-out/"
+                    endpoint="/transfers-out/"
                     title="Transfers Out"
                     transferField="transfers_out_event"
                 />

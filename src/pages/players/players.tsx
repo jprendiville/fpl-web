@@ -24,7 +24,7 @@ const PLAYERS_PAGE_OVERRIDES: ColumnMap = {
 export default function PlayersPage() {
     return (
         <PlayerTable
-            endpoint="/v1/players/"
+            endpoint="/players/"
             title="Players"
             columnsToShow={PLAYERS_ONLY}
             columnOverrides={PLAYERS_PAGE_OVERRIDES}

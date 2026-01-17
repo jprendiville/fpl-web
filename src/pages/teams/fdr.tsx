@@ -7,7 +7,7 @@ import { FREEZE_KEYS, getFdrColors, normalizeToPage } from "../../features/teams
 type AnyRow = Record<string, unknown>;
 type DRFPage<T> = { count: number; next: string | null; previous: string | null; results: T[] };
 
-const ENDPOINT = "/v1/fdr/";
+const ENDPOINT = "/fdr/";
 const FDR_COLORS = getFdrColors();
 
 const TEAMS_ONLY = ["short_name", "name"];
@@ -29,7 +29,7 @@ export default function TeamsPage() {
     const { data: events } = useQuery({
         queryKey: ["upcoming-events"],
         queryFn: async (): Promise<any[]> => {
-            const r = await api.get("/v1/events/upcoming/");
+            const r = await api.get("/events/upcoming/");
             return r.data; // list of { id, name, deadline_time }
         },
         staleTime: 5 * 60 * 1000,

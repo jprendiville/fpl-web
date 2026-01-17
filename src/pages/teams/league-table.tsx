@@ -12,7 +12,7 @@ export default function LeagueTablePage() {
 
     const { data: finishedGameweeks } = useQuery({
         queryKey: ["finished-gameweeks"],
-        queryFn: async () => (await api.get("/v1/events/finished/")).data,
+        queryFn: async () => (await api.get("/events/finished/")).data,
         staleTime: 5 * 60 * 1000,
     });
 
@@ -22,7 +22,7 @@ export default function LeagueTablePage() {
             const params: any = {};
             if (selectedGameweek) params.gameweek = Number(selectedGameweek);
             if (selectedDate) params.event_date = selectedDate;
-            return (await api.get("/v1/league-table/", { params })).data;
+            return (await api.get("/league-table/", { params })).data;
         },
         keepPreviousData: true,
     });

@@ -20,7 +20,7 @@ export default function LeagueProgressionPage() {
 
     const { data, isLoading } = useQuery({
         queryKey: ["league-progression", leagueId],
-        queryFn: async () => (await api.get(`/v1/league-progression/${leagueId}/`)).data,
+        queryFn: async () => (await api.get(`/league-progression/${leagueId}/`)).data,
         enabled: !!leagueId,
     });
 
