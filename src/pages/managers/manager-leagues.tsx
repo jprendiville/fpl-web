@@ -1,4 +1,3 @@
-// src/pages/manager-leagues.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -29,10 +28,16 @@ function Movement({ entry_rank, entry_last_rank, movement }: Partial<League>) {
     if (movement === "up") state = "up";
     else if (movement === "down") state = "down";
     else if (entry_rank != null && entry_last_rank != null) {
-        state = entry_rank < entry_last_rank ? "up" : entry_rank > entry_last_rank ? "down" : "same";
+        state =
+            entry_rank < entry_last_rank
+                ? "up"
+                : entry_rank > entry_last_rank
+                    ? "down"
+                    : "same";
     }
     const glyph = state === "up" ? "▲" : state === "down" ? "▼" : "●";
-    const color = state === "up" ? "#16a34a" : state === "down" ? "#dc2626" : "#111827";
+    const color =
+        state === "up" ? "#16a34a" : state === "down" ? "#dc2626" : "#111827";
     return <span style={{ color, fontSize: 12 }}>{glyph}</span>;
 }
 
@@ -57,6 +62,7 @@ export default function ManagerLeaguesPage() {
         if (normalized) setSp({ ids: normalized });
         else setSp({});
     }
+
     function clearIds() {
         setInput("");
         setSp({});
@@ -65,14 +71,59 @@ export default function ManagerLeaguesPage() {
     const { data, isLoading, refetch } = useQuery({
         queryKey: ["manager-leagues", idsParam],
         queryFn: async (): Promise<ManagerLeaguesResponse> => {
-            const r = await api.get("/managers/leagues/", { params: { ids: idsParam } });
+            const r = await api.get("/managers/leagues/", {
+                params: { ids: idsParam },
+            });
             return r.data;
         },
         enabled: hasIds,
         keepPreviousData: true,
     });
 
-    // ---- Reload mutation: POST /api/reload-league/<league_id>/ { manager_id } ----
+    // -----------------------------
+    // MUTATIONS THAT TRIGGER SPINNER
+    // -----------------------------
+
+    const progressionMut = useMutation({
+        mutationFn: async (league_id: number) => {
+            return qc.fetchQuery({
+                queryKey: ["league-progression", league_id],
+                queryFn: async () =>
+                    (await api.get(`/league-progression/${league_id}/`)).data,
+                staleTime: 30_000,
+            });
+        },
+        onSuccess: (_, league_id) => {
+            navigate(`/league-progression/${league_id}`);
+        },
+    });
+
+    const standingsMut = useMutation({
+        mutationFn: async (league_id: number) => {
+            return qc.fetchQuery({
+                queryKey: ["standings", league_id],
+                queryFn: async () =>
+                    (await api.get(`/standings/${league_id}/`)).data,
+            });
+        },
+        onSuccess: (_, league_id) => {
+            navigate(`/standings/${league_id}`);
+        },
+    });
+
+    const liveMut = useMutation({
+        mutationFn: async (league_id: number) => {
+            return qc.fetchQuery({
+                queryKey: ["live", league_id],
+                queryFn: async () =>
+                    (await api.get(`/live/${league_id}/`)).data,
+            });
+        },
+        onSuccess: (_, league_id) => {
+            navigate(`/live/${league_id}`);
+        },
+    });
+
     const reloadMut = useMutation({
         mutationFn: async (league_id: number) => {
             const managerId = data?.results?.[0]?.information?.id;
@@ -82,18 +133,6 @@ export default function ManagerLeaguesPage() {
         },
         onSuccess: () => refetch(),
     });
-
-    // ---- Navigate to progression page; prefetch API first ----
-    const goProgression = async (league_id: number) => {
-        await qc.prefetchQuery({
-            queryKey: ["league-progression", league_id],
-            queryFn: async () => (await api.get(`/league-progression/${league_id}/`)).data,
-            staleTime: 30_000,
-        });
-
-        navigate(`/league-progression/${encodeURIComponent(String(league_id))}`);
-
-    };
 
     const first = data?.results?.[0];
     const managerName =
@@ -105,8 +144,6 @@ export default function ManagerLeaguesPage() {
 
     return (
         <main className="mx-auto max-w-6xl px-4 page--compact">
-            {/* ... Toolbar and Manager name logic remains the same ... */}
-
             <div className="table-wrap">
                 <div className="table-scroll">
                     <table className="data" style={{ minWidth: 720 }}>
@@ -119,6 +156,7 @@ export default function ManagerLeaguesPage() {
                             <th>Last Rank</th>
                         </tr>
                         </thead>
+
                         <tbody>
                         <tr className="fake-header">
                             <td className="fake-th">League</td>
@@ -128,45 +166,108 @@ export default function ManagerLeaguesPage() {
                             <td className="fake-th">Last Rank</td>
                         </tr>
 
-                        {/* ... (isLoading and empty states) ... */}
+                        {isLoading && (
+                            <tr>
+                                <td colSpan={5} className="center">
+                                    Loading…
+                                </td>
+                            </tr>
+                        )}
 
                         {leagues.map((lg) => (
                             <tr key={lg.league_id}>
                                 <td>{lg.name}</td>
+
                                 <td className="center">
-                                    {/* ONLY RENDER BUTTONS IF LEAGUE_TYPE IS 'x' */}
-                                    {lg.league_type === 'x' && (
-                                        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                                            <button type="button" className="btn">Standings</button>
-                                            <button type="button" className="btn">Live</button>
+                                    {lg.league_type === "x" && (
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                gap: 8,
+                                                justifyContent: "center",
+                                            }}
+                                        >
                                             <button
                                                 type="button"
                                                 className="btn"
-                                                onClick={() => goProgression(lg.league_id)}
+                                                onClick={() =>
+                                                    standingsMut.mutate(
+                                                        lg.league_id
+                                                    )
+                                                }
+                                                disabled={
+                                                    standingsMut.isPending
+                                                }
+                                            >
+                                                Standings
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                className="btn"
+                                                onClick={() =>
+                                                    liveMut.mutate(
+                                                        lg.league_id
+                                                    )
+                                                }
+                                                disabled={liveMut.isPending}
+                                            >
+                                                Live
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                className="btn"
+                                                onClick={() =>
+                                                    progressionMut.mutate(
+                                                        lg.league_id
+                                                    )
+                                                }
+                                                disabled={
+                                                    progressionMut.isPending
+                                                }
                                             >
                                                 Progression
                                             </button>
+
                                             <button
                                                 type="button"
                                                 className="btn"
-                                                onClick={() => reloadMut.mutate(lg.league_id)}
-                                                disabled={reloadMut.isPending}
-                                                title="Delete & rebuild standings"
+                                                onClick={() =>
+                                                    reloadMut.mutate(
+                                                        lg.league_id
+                                                    )
+                                                }
+                                                disabled={
+                                                    reloadMut.isPending
+                                                }
                                             >
-                                                {reloadMut.isPending ? "Reloading…" : "Reload data"}
+                                                {reloadMut.isPending
+                                                    ? "Reloading…"
+                                                    : "Reload data"}
                                             </button>
                                         </div>
                                     )}
                                 </td>
+
                                 <td className="center">
                                     <Movement
-                                        entry_rank={lg.entry_rank ?? null}
-                                        entry_last_rank={lg.entry_last_rank ?? null}
+                                        entry_rank={
+                                            lg.entry_rank ?? null
+                                        }
+                                        entry_last_rank={
+                                            lg.entry_last_rank ?? null
+                                        }
                                         movement={lg.movement ?? null}
                                     />
                                 </td>
-                                <td className="num">{lg.entry_rank ?? ""}</td>
-                                <td className="num">{lg.entry_last_rank ?? ""}</td>
+
+                                <td className="num">
+                                    {lg.entry_rank ?? ""}
+                                </td>
+                                <td className="num">
+                                    {lg.entry_last_rank ?? ""}
+                                </td>
                             </tr>
                         ))}
                         </tbody>
