@@ -18,6 +18,7 @@ import { usePlayerParams } from "../features/players/player-params";
 import PaginationBar from "./paginationbar";
 import { normalizeToPage, getFdrColors } from "../features/teams/team-utils";
 import PredictionHistoryModal from "../pages/players/prediction-history";
+import {RiInformation2Line} from "react-icons/ri";
 
 type AnyRow = Record<string, unknown>;
 type DRFPage<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -392,10 +393,10 @@ export default function PredictionsTable({
                                                     type="button"
                                                     onClick={() => openHistory(row)}
                                                     title="View history"
-                                                    aria-label={`View history for ${row["web_name"]}`}
-                                                    style={eyeBtnStyle}
+                                                    aria-label={`View history for ${(row["web_name"] as string) || "player"}`}
+                                                    className="btn-history"
                                                 >
-                                                    👁
+                                                    <RiInformation2Line size={18} />
                                                 </button>
                                             </td>
                                         );
@@ -491,14 +492,4 @@ const btnStyle: React.CSSProperties = {
     fontSize: 13,
     background: "var(--bg)",
     cursor: "pointer",
-};
-
-const eyeBtnStyle: React.CSSProperties = {
-    border: "1px solid var(--border)",
-    borderRadius: 10,
-    padding: "2px 6px",
-    fontSize: 12,
-    background: "var(--bg)",
-    cursor: "pointer",
-    lineHeight: 1,
 };

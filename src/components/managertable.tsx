@@ -23,6 +23,7 @@ import {
 
 import { normalizeToPage, getFdrColors } from "../features/teams/team-utils";
 import PlayerHistoryModal from "../pages/players/player-history";
+import {RiInformation2Line} from "react-icons/ri";
 
 type AnyRow = Record<string, unknown>;
 
@@ -381,13 +382,12 @@ export default function ManagerTable({
                                                 >
                                                     <button
                                                         type="button"
-                                                        onClick={() =>
-                                                            openHistory(row)
-                                                        }
+                                                        onClick={() => openHistory(row)}
                                                         title="View history"
-                                                        style={eyeBtnStyle}
+                                                        aria-label={`View history for ${(row["web_name"] as string) || "player"}`}
+                                                        className="btn-history"
                                                     >
-                                                        👁
+                                                        <RiInformation2Line size={18} />
                                                     </button>
                                                 </td>
                                             );
@@ -484,14 +484,4 @@ const inputStyle: React.CSSProperties = {
     padding: "6px 10px",
     fontSize: 13,
     background: "var(--bg)",
-};
-
-const eyeBtnStyle: React.CSSProperties = {
-    border: "1px solid var(--border)",
-    borderRadius: 10,
-    padding: "2px 6px",
-    fontSize: 12,
-    background: "var(--bg)",
-    cursor: "pointer",
-    lineHeight: 1,
 };

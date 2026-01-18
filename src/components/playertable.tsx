@@ -1,6 +1,7 @@
 // src/components/playertable.tsx
 import type React from "react";
 import { useMemo, useState } from "react";
+import { RiInformation2Line } from "react-icons/ri";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import {
@@ -415,13 +416,12 @@ export default function PlayerTable({
                                                     type="button"
                                                     onClick={() => openHistory(row)}
                                                     title="View history"
-                                                    aria-label={`View history for ${
-                                                        (row["web_name"] as string) || "player"
-                                                    }`}
-                                                    style={eyeBtnStyle}
+                                                    aria-label={`View history for ${(row["web_name"] as string) || "player"}`}
+                                                    className="btn-history"
                                                 >
-                                                    👁
+                                                    <RiInformation2Line size={18} />
                                                 </button>
+
                                             </td>
                                         );
                                     }
@@ -517,14 +517,4 @@ const btnStyle: React.CSSProperties = {
     fontSize: 13,
     background: "var(--bg)",
     cursor: "pointer",
-};
-
-const eyeBtnStyle: React.CSSProperties = {
-    border: "1px solid var(--border)",
-    borderRadius: 10,
-    padding: "2px 6px",
-    fontSize: 12,
-    background: "var(--bg)",
-    cursor: "pointer",
-    lineHeight: 1,
 };
